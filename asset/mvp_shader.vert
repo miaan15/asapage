@@ -1,12 +1,14 @@
 #version 450
 
 layout(location = 0) in vec3 i_pos;
-layout(location = 1) in vec3 i_color;
 
 layout(set = 1, binding = 0) uniform Transform {
     vec3 u_translation;
     vec4 u_rotation;
     vec3 u_scale;
+};
+layout(set = 1, binding = 1) uniform Color {
+    vec3 u_color;
 };
 
 layout(location = 0) out vec4 frag_color;
@@ -49,5 +51,11 @@ void main() {
 
     gl_Position = model_matrix * vec4(i_pos, 1.0);
 
-    frag_color = vec4(i_color, 1.0);
+    // frag_color.x = u_color.x * ((gl_Position.x + 1.0) * 0.5);
+    // frag_color.y = u_color.y * ((gl_Position.y + 1.0) * 0.5);
+    // frag_color.z = u_color.z * ((gl_Position.z + 1.0) * 0.5);
+    frag_color.x = u_color.x * gl_Position.x;
+    frag_color.y = u_color.y * gl_Position.y;
+    frag_color.z = u_color.z * gl_Position.z;
+    frag_color.w = 1.0;
 }
