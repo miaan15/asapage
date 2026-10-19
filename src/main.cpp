@@ -8,7 +8,8 @@
 import define;
 import internal;
 import context;
-import file_sys;
+import file;
+import input;
 import shader;
 
 import vertex_box;
@@ -49,6 +50,8 @@ int main() {
 
     file_sys_init();
 
+    input_sys_init();
+
     // FIXME generalize this
     int window_w, window_h;
     SDL_GetWindowSizeInPixels(window, &window_w, &window_h);
@@ -82,8 +85,8 @@ int main() {
         char fragment_shader_path[512] = "mvp_shader.frag";
         file_to_asset_path(fragment_shader_path, 512);
 
-        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE_VERTEX, 0, 0, 0, 4);
-        SDL_GPUShader *fragment_shader = create_shader_glsl_file(fragment_shader_path, SHADER_STAGE_FRAGMENT, 0, 0, 0, 0);
+        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE::VERTEX, 0, 0, 0, 4);
+        SDL_GPUShader *fragment_shader = create_shader_glsl_file(fragment_shader_path, SHADER_STAGE::FRAGMENT, 0, 0, 0, 0);
         if (vertex_shader == nullptr || fragment_shader == nullptr) { assert(false); }
 
         // Create pipeline
@@ -218,21 +221,22 @@ int main() {
 
     bool app_running = true;
     while (app_running) {
+        input_sys_init();
+
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) { app_running = false; }
             if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE) { app_running = false; }
 
-            // FIXME test rotate
-            if (event.type == SDL_EVENT_KEY_DOWN) {
-                if (event.key.scancode == SDL_SCANCODE_W) { x_rot -= 3.14159 / 180.0; }
-                if (event.key.scancode == SDL_SCANCODE_A) { y_rot -= 3.14159 / 180.0; }
-                if (event.key.scancode == SDL_SCANCODE_S) { x_rot += 3.14159 / 180.0; }
-                if (event.key.scancode == SDL_SCANCODE_D) { y_rot += 3.14159 / 180.0; }
-                if (event.key.scancode == SDL_SCANCODE_E) { z_pos += .1; }
-                if (event.key.scancode == SDL_SCANCODE_Q) { z_pos -= .1; }
-            }
         }
+
+        // FIXME test
+        if (input_is_key_on(SCANCODE::W)) { x_rot -= 3.14159 / 180.0; }
+        if (input_is_key_on(SCANCODE::A)) { y_rot -= 3.14159 / 180.0; }
+        if (input_is_key_on(SCANCODE::S)) { x_rot += 3.14159 / 180.0; }
+        if (input_is_key_on(SCANCODE::D)) { y_rot += 3.14159 / 180.0; }
+        if (input_is_key_on(SCANCODE::E)) { z_pos += .1; }
+        if (input_is_key_on(SCANCODE::Q)) { z_pos -= .1; }
 
         { // FIXME test rotate
             f32 cx = cos(x_rot * 0.5f), sx = sin(x_rot * 0.5f);

@@ -11,23 +11,23 @@ import internal;
 
 export namespace asapage {
 
-enum SHADER_STAGE {
-    SHADER_STAGE_VERTEX = SDL_GPU_SHADERSTAGE_VERTEX,
-    SHADER_STAGE_FRAGMENT = SDL_GPU_SHADERSTAGE_FRAGMENT,
+enum struct SHADER_STAGE {
+    VERTEX = SDL_GPU_SHADERSTAGE_VERTEX,
+    FRAGMENT = SDL_GPU_SHADERSTAGE_FRAGMENT,
 };
 
-enum SHADER_COMPILE_OPTIMIZATION {
-    SHADER_COMPILE_OPTIMIZATION_NONE, SHADER_COMPILE_OPTIMIZATION_SIZE, SHADER_COMPILE_OPTIMIZATION_SPEED,
+enum struct SHADER_COMPILE_OPTIMIZATION {
+    NONE, SIZE, SPEED,
 };
 
 SDL_GPUShader *create_shader_glsl_file(const char *glsl_code_path,
                                        SHADER_STAGE stage,
                                        u32 sampler_num, u32 storage_texture_num, u32 storage_buf_num, u32 uniform_buf_num,
-                                       SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION_SPEED) {
-    const char *stage_flag_string = stage == SHADER_STAGE_VERTEX ? "vertex" : "fragment";
+                                       SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION::SPEED) {
+    const char *stage_flag_string = stage == SHADER_STAGE::VERTEX ? "vertex" : "fragment";
     const char *optimization_flag_string = "0";
-    if (optimization == SHADER_COMPILE_OPTIMIZATION_SIZE) { optimization_flag_string = "s"; }
-    if (optimization == SHADER_COMPILE_OPTIMIZATION_SPEED) { optimization_flag_string = ""; }
+    if (optimization == SHADER_COMPILE_OPTIMIZATION::SIZE) { optimization_flag_string = "s"; }
+    if (optimization == SHADER_COMPILE_OPTIMIZATION::SPEED) { optimization_flag_string = ""; }
 
     char *command;
     asprintf(&command, "glslc -fshader-stage=%s -O%s -x glsl %s -o -", stage_flag_string, optimization_flag_string, glsl_code_path);
@@ -82,11 +82,11 @@ SDL_GPUShader *create_shader_glsl_file(const char *glsl_code_path,
 SDL_GPUShader *create_shader_glsl_raw(const char *glsl_code,
                                       SHADER_STAGE stage,
                                       u32 sampler_num, u32 storage_texture_num, u32 storage_buf_num, u32 uniform_buf_num,
-                                      SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION_SPEED) {
-    const char *stage_flag_string = stage == SHADER_STAGE_VERTEX ? "vertex" : "fragment";
+                                      SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION::SPEED) {
+    const char *stage_flag_string = stage == SHADER_STAGE::VERTEX ? "vertex" : "fragment";
     const char *optimization_flag_string = "0";
-    if (optimization == SHADER_COMPILE_OPTIMIZATION_SIZE) { optimization_flag_string = "s"; }
-    if (optimization == SHADER_COMPILE_OPTIMIZATION_SPEED) { optimization_flag_string = ""; }
+    if (optimization == SHADER_COMPILE_OPTIMIZATION::SIZE) { optimization_flag_string = "s"; }
+    if (optimization == SHADER_COMPILE_OPTIMIZATION::SPEED) { optimization_flag_string = ""; }
 
     char *command;
     asprintf(&command, "echo '%s' | glslc -fshader-stage=%s -O%s -x glsl - -o -", glsl_code, stage_flag_string, optimization_flag_string);

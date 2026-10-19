@@ -3,7 +3,7 @@ module;
 #include <cstdio>
 #include <cstring>
 
-export module file_sys;
+export module file;
 
 import define;
 
