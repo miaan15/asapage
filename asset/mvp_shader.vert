@@ -1,122 +1,81 @@
 #version 450
 
-layout(location = 0) in vec3 i_pos;
-
-layout(set = 1, binding = 0) uniform MVP {
+layout(set = 1, binding = 0) uniform View {
+    vec2 u_screen_size;
     vec3 u_camera_pos;
     vec3 u_camera_target;
     vec3 u_camera_up;
-
-    vec2 u_screen_size;
-
-    float u_focal_length;
-
-    vec3 u_translation;
-    vec4 u_rotation;
-    vec3 u_scale;
+    float u_camera_fov;
 };
 
-layout(set = 1, binding = 3) uniform Color {
-    vec3 u_color;
-};
+layout(location = 0) in vec3 i_pos;
 
-layout(location = 0) out vec4 frag_color;
+layout(location = 1) in vec3 i_translation;
+layout(location = 2) in vec4 i_rotation;
+layout(location = 3) in vec3 i_scale;
 
-mat4 get_model_view_matrix(vec3 camera_pos, vec3 camera_target, vec3 camera_up) {
-    vec3 n = normalize(camera_pos - camera_target);
-    vec3 l = normalize(cross(camera_up, n));
-    vec3 m = normalize(cross(n, l));
-    vec3 c = camera_target - camera_pos;
+layout(location = 0) out vec4 o_color;
 
-    return mat4 (
-        l.x, m.x, n.x, 0,
-        l.y, m.y, n.y, 0,
-        l.z, m.z, n.z, 0,
-        0,   0,   0,   1
-    ) * mat4 (
+mat4 perspective_matrix(float fov, float aspect, float near, float far) {
+    float htfov = tan(fov / 2);
+    return mat4(
+        1 / (aspect * htfov), 0,         0,                            0,
+        0,                    1 / htfov, 0,                            0,
+        0,                    0,         far / (near - far),           1,
+        0,                    0,         -(far * near) / (near - far), 0
+    );
+}
+
+mat4 look_at_matrix(vec3 eye, vec3 center, vec3 up) {
+    vec3 f = normalize(center - eye);
+    vec3 r = normalize(cross(up, f));
+    vec3 u = cross(f, r);
+    return mat4(
+        r.x,          u.x,          f.x,          0,
+        r.y,          u.y,          f.y,          0,
+        r.z,          u.z,          f.z,          0,
+        -dot(r, eye), -dot(u, eye), -dot(f, eye), 1
+    );
+}
+
+mat4 translation_matrix(vec3 t) {
+    return mat4(
         1,   0,   0,   0,
         0,   1,   0,   0,
         0,   0,   1,   0,
-        c.x, c.y, c.z, 1
+        t.x, t.y, t.z, 1
     );
 }
 
-mat4 get_viewport_matrix(vec2 screen_size) {
-    float w = screen_size.x, h = screen_size.y;
-
+mat4 rotation_matrix(vec4 r) {
+    r = normalize(r);
+    float x = r.x, y = r.y, z = r.z, w = r.w;
     return mat4(
-        2/w, 0,   0, 0,
-        0,   2/h, 0, 0,
-        0,   0,   1, 0,
-        0,   0,   0, 1
+        1 - 2 * (y*y + z*z), 2 * (x*y + z*w),     2 * (x*z - y*w),     0,
+        2 * (x*y - z*w),     1 - 2 * (x*x + z*z), 2 * (y*z + x*w),     0,
+        2 * (x*z + y*w),     2 * (y*z - x*w),     1 - 2 * (x*x + y*y), 0,
+        0,                   0,                   0,                   1
     );
 }
 
-mat4 get_perspective_matrix(float focal_length) {
-    float f = focal_length;
-
+mat4 scale_matrix(vec3 s) {
     return mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, -1/f,
-        0, 0, 0, 1
-    );
-}
-
-mat4 get_translation_matrix(vec3 translation) {
-    float x = translation.x, y = translation.y, z = translation.z;
-
-    return mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        x, y, z, 1
-    );
-}
-
-mat4 get_rotation_matrix(vec4 rotation) {
-    rotation = normalize(rotation);
-    float x = rotation.x, y = rotation.y, z = rotation.z, w = rotation.w;
-
-    return mat4(
-        1 - 2*(y*y + z*z), 2*(x*y + z*w),     2*(x*z - y*w),     0,
-        2*(x*y - z*w),     1 - 2*(x*x + z*z), 2*(y*z + x*w),     0,
-        2*(x*z + y*w),     2*(y*z - x*w),     1 - 2*(x*x + y*y), 0,
-        0,                 0,                 0,                 1
-    );
-}
-
-mat4 get_scale_matrix(vec3 scale) {
-    float x = scale.x, y = scale.y, z = scale.z;
-
-    return mat4(
-        x, 0, 0, 0,
-        0, y, 0, 0,
-        0, 0, z, 0,
-        0, 0, 0, 1
+        s.x, 0,   0,   0,
+        0,   s.y, 0,   0,
+        0,   0,   s.z, 0,
+        0,   0,   0,   1
     );
 }
 
 void main() {
-    mat4 transform_matrix = get_translation_matrix(u_translation) *
-                            get_rotation_matrix(u_rotation) *
-                            get_scale_matrix(u_scale);
+    mat4 model = translation_matrix(i_translation) *
+                 rotation_matrix(i_rotation) *
+                 scale_matrix(i_scale);
 
-    mat4 model_view_matrix = get_model_view_matrix(u_camera_pos, u_camera_target, u_camera_up);
+    mat4 view = look_at_matrix(u_camera_pos, u_camera_target, u_camera_up);
+    mat4 proj = perspective_matrix(u_camera_fov, u_screen_size.x / u_screen_size.y, 0.1, 100.0);
 
-    mat4 viewport_matrix = get_viewport_matrix(u_screen_size);
+    gl_Position = proj * view * model * vec4(i_pos, 1.0);
 
-    mat4 perspective_matrix = get_perspective_matrix(u_focal_length);
-
-    gl_Position =
-        perspective_matrix *
-        viewport_matrix *
-        model_view_matrix *
-        transform_matrix *
-        vec4(i_pos, 1);
-
-    frag_color.x = u_color.x * (i_pos.x + 1) * 0.5;
-    frag_color.y = u_color.y * (i_pos.y + 1) * 0.5;
-    frag_color.z = u_color.z * (i_pos.z + 1) * 0.5;
-    frag_color.w = 1;
+    o_color = vec4((i_pos + vec3(1.0)) * 0.5, 1.0);
 }

@@ -6,6 +6,7 @@ module;
 export module file;
 
 import define;
+import mem;
 
 export namespace asapage {
 
@@ -63,7 +64,7 @@ void file_concat_path(char *dest, const char *src, size_t dest_size_cap = 0) { /
     size_t native_dest_len = file_to_native_path(dest);
 
     char native_src[src_len + 1];
-    memcpy(native_src, src, src_len + 1);
+    mem_copy(native_src, src, src_len + 1);
     size_t native_src_len = file_to_native_path(native_src);
 
     size_t out_len = native_dest_len + native_src_len + 1; // +1 separator
@@ -73,7 +74,7 @@ void file_concat_path(char *dest, const char *src, size_t dest_size_cap = 0) { /
     }
 
     dest[native_dest_len] = FILE_SEPARATOR;
-    memcpy(dest + native_dest_len + 1, native_src, native_src_len);
+    mem_copy(dest + native_dest_len + 1, native_src, native_src_len);
     dest[out_len] = '\0';
 }
 
@@ -82,11 +83,11 @@ void file_prepend_path(char *dest, const char *src, size_t dest_size_cap = 0) { 
     size_t src_len = strlen(src);
 
     char native_dest[dest_len + 1];
-    memcpy(native_dest, dest, dest_len + 1);
+    mem_copy(native_dest, dest, dest_len + 1);
     size_t native_dest_len = file_to_native_path(native_dest);
 
     char native_src[src_len + 1];
-    memcpy(native_src, src, src_len + 1);
+    mem_copy(native_src, src, src_len + 1);
     size_t native_src_len = file_to_native_path(native_src);
 
     size_t out_len = native_src_len + native_dest_len + 1; // +1 separator
@@ -95,9 +96,9 @@ void file_prepend_path(char *dest, const char *src, size_t dest_size_cap = 0) { 
         return;
     }
 
-    memcpy(dest, native_src, native_src_len);
+    mem_copy(dest, native_src, native_src_len);
     dest[native_src_len] = FILE_SEPARATOR;
-    memcpy(dest + native_src_len + 1, native_dest, native_dest_len);
+    mem_copy(dest + native_src_len + 1, native_dest, native_dest_len);
     dest[out_len] = '\0';
 }
 

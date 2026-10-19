@@ -8,6 +8,7 @@ module;
 export module input;
 
 import define;
+import mem;
 import internal;
 
 export namespace asapage {
@@ -208,7 +209,7 @@ void input_pre_poll() {
     }
 
     // update last_keyboard_state
-    memcpy(input_sys.last_keyboard_state, input_sys.cur_keyboard_state, input_sys.numkeys * sizeof(bool));
+    mem_copy(input_sys.last_keyboard_state, input_sys.cur_keyboard_state, input_sys.numkeys * sizeof(bool));
 }
 
 // call this after all tick update input request

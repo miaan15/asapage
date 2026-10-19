@@ -13,7 +13,7 @@ export namespace asapage {
 
 constexpr usize MEM_MAX_ALIGN = alignof(max_align_t);
 
-void mem_copy(void *__restrict dest, void *__restrict src, usize size) {
+void mem_copy(void *__restrict dest, const void *__restrict src, usize size) {
     memcpy(dest, src, size);
 }
 

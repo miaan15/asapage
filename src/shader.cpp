@@ -7,6 +7,7 @@ module;
 export module shader;
 
 import define;
+import mem;
 import internal;
 
 export namespace asapage {
@@ -55,7 +56,7 @@ SDL_GPUShader *create_shader_glsl_file(const char *glsl_code_path,
             spirv_code_cap *= 2;
             spirv_code_buf = (u8*)realloc(spirv_code_buf, spirv_code_cap);
         }
-        memcpy(spirv_code_buf + spirv_code_len, fread_data_read_buf, fread_data_read_len);
+        mem_copy(spirv_code_buf + spirv_code_len, fread_data_read_buf, fread_data_read_len);
         spirv_code_len += fread_data_read_len;
 
         if (fread_data_read_len < FREAD_DATA_READ_SIZE) { break; }
@@ -114,7 +115,7 @@ SDL_GPUShader *create_shader_glsl_raw(const char *glsl_code,
             spirv_code_cap *= 2;
             spirv_code_buf = (u8*)realloc(spirv_code_buf, spirv_code_cap);
         }
-        memcpy(spirv_code_buf + spirv_code_len, fread_data_read_buf, fread_data_read_len);
+        mem_copy(spirv_code_buf + spirv_code_len, fread_data_read_buf, fread_data_read_len);
         spirv_code_len += fread_data_read_len;
 
         if (fread_data_read_len < FREAD_DATA_READ_SIZE) { break; }

@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 import define;
+import mem;
 import internal;
 import context;
 import file;
@@ -16,33 +17,24 @@ import vertex_box;
 
 using namespace asapage;
 
-struct alignas(16) MVPUniformData {
-    f32 camera_pos[3];
-    f32 __padding_0;
+struct alignas(16) ViewUniformData {
+    f32 screen_size[2];
+    f32 __padding_0[2];
 
-    f32 camera_target[3];
+    f32 camera_pos[3];
     f32 __padding_1;
 
-    f32 camera_up[3];
+    f32 camera_target[3];
     f32 __padding_2;
 
-    f32 screen_size[2];
-
-    f32 focal_length;
-    f32 __padding_3;
-
-    f32 translation[3];
-    f32 __padding_4;
-
-    f32 rotation[4];
-
-    f32 scale[3];
-    f32 __padding_5;
+    f32 camera_up[3];
+    f32 camera_fov;
 };
 
-struct alignas(16) ColorUniformData { // FIXME
-    f32 u_color[3];
-    f32 __padding_0[1];
+struct Transform {
+    f32 translation[3];
+    f32 rotation[4];
+    f32 scale[3];
 };
 
 int main() {
@@ -58,23 +50,17 @@ int main() {
 
     // Render GPU stuff
     constexpr u32 VERTEX_BUFFER_SIZE = 1 << 10 << 10; // ~1 MB
-    SDL_GPUBuffer *mvp_vertex_buf;
-    SDL_GPUTransferBuffer *mvp_vertex_transfer_buf;
+    SDL_GPUBuffer *vertex_buf;
+    SDL_GPUBuffer *transform_buf;
     SDL_GPUGraphicsPipeline *mvp_pipeline;
 
     // Data
-    MVPUniformData mvp_uniform_data = {
-        .camera_pos = { 3, 3, 0 },
+    ViewUniformData view_uniform_data = {
+        .screen_size = { (f32)window_w / (f32)window_h, 1 },
+        .camera_pos = { 0, 5, -5 },
         .camera_target = { 0, 0, 0 },
         .camera_up = { 0, 1, 0 },
-        .screen_size = { (f32)window_w / (f32)window_h, 1 },
-        .focal_length = 1,
-        .translation = { 0, 0, 0 },
-        .rotation = { 0, 0, 0, 1 },
-        .scale = { 1, 1, 1 }
-    };
-    ColorUniformData color_uniform_data = { // FIXME
-        .u_color = {1, 1, 1}
+        .camera_fov = 20.0 * 3.14159 / 180.0
     };
 
     // Pipelines
@@ -85,7 +71,7 @@ int main() {
         char fragment_shader_path[512] = "mvp_shader.frag";
         file_to_asset_path(fragment_shader_path, 512);
 
-        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE::VERTEX, 0, 0, 0, 4);
+        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE::VERTEX, 0, 0, 0, 1);
         SDL_GPUShader *fragment_shader = create_shader_glsl_file(fragment_shader_path, SHADER_STAGE::FRAGMENT, 0, 0, 0, 0);
         if (vertex_shader == nullptr || fragment_shader == nullptr) { assert(false); }
 
@@ -97,26 +83,49 @@ int main() {
 
         // Vertex input
         // - VertexBufferDescription
-        SDL_GPUVertexBufferDescription vertex_buffer_decs_list_buf[1] = {};
+        SDL_GPUVertexBufferDescription vertex_buffer_decs_list_buf[2] = {};
         vertex_buffer_decs_list_buf[0] = (SDL_GPUVertexBufferDescription) {
             .slot = 0,
             .pitch = 3 * sizeof(f32),
             .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
         };
+        vertex_buffer_decs_list_buf[1] = (SDL_GPUVertexBufferDescription) {
+            .slot = 1,
+            .pitch = sizeof(Transform),
+            .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE,
+        };
 
         // - VertexAttribute
-        SDL_GPUVertexAttribute vertex_attribute_list_buf[1] = {};
+        SDL_GPUVertexAttribute vertex_attribute_list_buf[4] = {};
         vertex_attribute_list_buf[0] = (SDL_GPUVertexAttribute) { // layout(location = 0) in vec3 i_pos;
             .location = 0,
             .buffer_slot = 0,
             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
             .offset = 0,
         };
+        vertex_attribute_list_buf[1] = (SDL_GPUVertexAttribute) { // layout(location = 1) in vec3 i_translation;
+            .location = 1,
+            .buffer_slot = 1,
+            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            .offset = offsetof(Transform, translation),
+        };
+        vertex_attribute_list_buf[2] = (SDL_GPUVertexAttribute) { // layout(location = 2) in vec4 i_rotation;
+            .location = 2,
+            .buffer_slot = 1,
+            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+            .offset = offsetof(Transform, rotation),
+        };
+        vertex_attribute_list_buf[3] = (SDL_GPUVertexAttribute) { // layout(location = 3) in vec3 i_scale;
+            .location = 3,
+            .buffer_slot = 1,
+            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            .offset = offsetof(Transform, scale),
+        };
 
         // >
         SDL_GPUVertexInputState vertex_input_state = (SDL_GPUVertexInputState) {
-            .vertex_buffer_descriptions = vertex_buffer_decs_list_buf, .num_vertex_buffers = 1,
-            .vertex_attributes = vertex_attribute_list_buf, .num_vertex_attributes = 1,
+            .vertex_buffer_descriptions = vertex_buffer_decs_list_buf, .num_vertex_buffers = 2,
+            .vertex_attributes = vertex_attribute_list_buf, .num_vertex_attributes = 4,
         };
         create_info.vertex_input_state = vertex_input_state;
 
@@ -137,7 +146,7 @@ int main() {
         // Rasterizer State
         SDL_GPURasterizerState rasterizer_state = (SDL_GPURasterizerState) {
             .cull_mode = SDL_GPU_CULLMODE_BACK,
-            .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+            .front_face = SDL_GPU_FRONTFACE_CLOCKWISE
         };
         create_info.rasterizer_state = rasterizer_state;
 
@@ -159,28 +168,32 @@ int main() {
 
     // Buffers
     {
-        // Buffer
-        SDL_GPUBufferCreateInfo buf_create_info = (SDL_GPUBufferCreateInfo) {
+        SDL_GPUBufferCreateInfo vertex_buf_create_info = {
             .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-            .size = VERTEX_BUFFER_SIZE
+            .size = sizeof(box_verticies)
         };
-        mvp_vertex_buf = SDL_CreateGPUBuffer(gpu_device, &buf_create_info);
+        vertex_buf = SDL_CreateGPUBuffer(gpu_device, &vertex_buf_create_info);
 
-        // Transfer buffers
-        SDL_GPUTransferBufferCreateInfo transfer_buf_create_info = (SDL_GPUTransferBufferCreateInfo) {
-            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = VERTEX_BUFFER_SIZE,
+        SDL_GPUBufferCreateInfo transform_buf_create_info = {
+            .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+            .size = sizeof(Transform)
         };
-        mvp_vertex_transfer_buf = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_buf_create_info);
+        transform_buf = SDL_CreateGPUBuffer(gpu_device, &transform_buf_create_info);
     }
+
     // Copy vertex data to GPU
     {
+        // Transfer buffer
+        SDL_GPUTransferBufferCreateInfo transfer_buf_create_info = (SDL_GPUTransferBufferCreateInfo) {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = sizeof(box_verticies),
+        };
+        SDL_GPUTransferBuffer *transfer_buf = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_buf_create_info);
+
         // Map
-        void *transfer_buf_mapped_ptr = SDL_MapGPUTransferBuffer(gpu_device, mvp_vertex_transfer_buf, true);
-
-        memcpy(transfer_buf_mapped_ptr, box_verticies, sizeof(box_verticies));
-
-        SDL_UnmapGPUTransferBuffer(gpu_device, mvp_vertex_transfer_buf);
+        void *transfer_buf_mapped_ptr = SDL_MapGPUTransferBuffer(gpu_device, transfer_buf, true);
+        mem_copy(transfer_buf_mapped_ptr, box_verticies, sizeof(box_verticies));
+        SDL_UnmapGPUTransferBuffer(gpu_device, transfer_buf);
 
         //
         SDL_GPUCommandBuffer* upload_command_buf = SDL_AcquireGPUCommandBuffer(gpu_device);
@@ -189,19 +202,21 @@ int main() {
         SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(upload_command_buf);
 
         SDL_GPUTransferBufferLocation transfer_buf_location = (SDL_GPUTransferBufferLocation) {
-            .transfer_buffer = mvp_vertex_transfer_buf,
+            .transfer_buffer = transfer_buf,
             .offset = 0
         };
         SDL_GPUBufferRegion buf_region = (SDL_GPUBufferRegion) {
-            .buffer = mvp_vertex_buf,
+            .buffer = vertex_buf,
             .offset = 0,
             .size = sizeof(box_verticies)
         };
-        SDL_UploadToGPUBuffer(copy_pass, &transfer_buf_location, &buf_region, true);
+        SDL_UploadToGPUBuffer(copy_pass, &transfer_buf_location, &buf_region, false);
 
         SDL_EndGPUCopyPass(copy_pass);
 
         SDL_SubmitGPUCommandBuffer(upload_command_buf);
+
+        SDL_ReleaseGPUTransferBuffer(gpu_device, transfer_buf);
     }
 
     // Depth texture
@@ -216,36 +231,40 @@ int main() {
     };
     SDL_GPUTexture *depth_texture = SDL_CreateGPUTexture(gpu_device, &depth_texture_create_info);
 
-    f32 x_rot = 0, y_rot = 0; // FIXME test rotate
-    f32 z_pos = 0; // FIXME test depth
+    // FIXME
+    Transform transform;
+    transform.translation[0] = 0;
+    transform.translation[1] = 0;
+    transform.translation[2] = 0;
+
+    transform.rotation[0] = 0;
+    transform.rotation[1] = 0;
+    transform.rotation[2] = 0;
+    transform.rotation[3] = 1;
+
+    transform.scale[0] = 1;
+    transform.scale[1] = 1;
+    transform.scale[2] = 1;
+
+    f32 rot_angle = 0;
+
+    // FIXME test
+    SDL_GPUTransferBuffer *transform_transfer_buf; {
+        SDL_GPUTransferBufferCreateInfo transfer_buf_create_info = (SDL_GPUTransferBufferCreateInfo) {
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+            .size = sizeof(Transform),
+        };
+        transform_transfer_buf = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_buf_create_info);
+    }
 
     bool app_running = true;
     while (app_running) {
-        input_sys_init();
+        input_pre_poll();
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) { app_running = false; }
             if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE) { app_running = false; }
-
-        }
-
-        // FIXME test
-        if (input_is_key_on(SCANCODE::W)) { x_rot -= 3.14159 / 180.0; }
-        if (input_is_key_on(SCANCODE::A)) { y_rot -= 3.14159 / 180.0; }
-        if (input_is_key_on(SCANCODE::S)) { x_rot += 3.14159 / 180.0; }
-        if (input_is_key_on(SCANCODE::D)) { y_rot += 3.14159 / 180.0; }
-        if (input_is_key_on(SCANCODE::E)) { z_pos += .1; }
-        if (input_is_key_on(SCANCODE::Q)) { z_pos -= .1; }
-
-        { // FIXME test rotate
-            f32 cx = cos(x_rot * 0.5f), sx = sin(x_rot * 0.5f);
-            f32 cy = cos(y_rot * 0.5f), sy = sin(y_rot * 0.5f);
-            mvp_uniform_data.rotation[0] = sx * cy;
-            mvp_uniform_data.rotation[1] = cx * sy;
-            mvp_uniform_data.rotation[2] = -sx * sy;
-            mvp_uniform_data.rotation[3] = cx * cy;
-            mvp_uniform_data.translation[2] = z_pos;
         }
 
         // Command buffer
@@ -263,38 +282,79 @@ int main() {
             continue;
         }
 
+        // FIXME
+        if (input_is_key_on(SCANCODE::W)) { transform.translation[2] += .1; }
+        if (input_is_key_on(SCANCODE::A)) { transform.translation[0] -= .1;  }
+        if (input_is_key_on(SCANCODE::S)) { transform.translation[2] -= .1;  }
+        if (input_is_key_on(SCANCODE::D)) { transform.translation[0] += .1;  }
+        if (input_is_key_on(SCANCODE::E)) { rot_angle -= 0.02; }
+        if (input_is_key_on(SCANCODE::Q)) { rot_angle += 0.02; }
+        transform.rotation[1] = sin(rot_angle / 2);
+        transform.rotation[3] = cos(rot_angle / 2);
+
+        // Pass Transform to GPU // FIXME
+        {
+            // Map
+            void *transfer_buf_mapped_ptr = SDL_MapGPUTransferBuffer(gpu_device, transform_transfer_buf, true);
+            mem_copy(transfer_buf_mapped_ptr, &transform, sizeof(Transform));
+            SDL_UnmapGPUTransferBuffer(gpu_device, transform_transfer_buf);
+
+            // Copy pass
+            SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(command_buf);
+
+            SDL_GPUTransferBufferLocation transfer_buf_location = (SDL_GPUTransferBufferLocation) {
+                .transfer_buffer = transform_transfer_buf,
+                .offset = 0
+            };
+            SDL_GPUBufferRegion buf_region = (SDL_GPUBufferRegion) {
+                .buffer = transform_buf,
+                .offset = 0,
+                .size = sizeof(Transform)
+            };
+            SDL_UploadToGPUBuffer(copy_pass, &transfer_buf_location, &buf_region, true);
+
+            SDL_EndGPUCopyPass(copy_pass);
+        }
+
         // Render pass
         SDL_GPURenderPass *render_pass;
 
-        SDL_GPUColorTargetInfo color_target_info = {};
-        color_target_info.texture = swapchain_texture;
-        color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-        color_target_info.store_op = SDL_GPU_STOREOP_DONT_CARE;
-        color_target_info.clear_color = (SDL_FColor){0.9, 0.9, 0.9, 1};
+        SDL_GPUColorTargetInfo color_target_info = (SDL_GPUColorTargetInfo) {
+            .texture = swapchain_texture,
+            .clear_color = (SDL_FColor){0.8, 1, 0.8, 1},
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_DONT_CARE
+        };
 
-        SDL_GPUDepthStencilTargetInfo depth_target_info = {};
-        depth_target_info.texture = depth_texture;
-        depth_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-        depth_target_info.store_op = SDL_GPU_STOREOP_DONT_CARE;
-        depth_target_info.clear_depth = 1;
+        SDL_GPUDepthStencilTargetInfo depth_target_info = (SDL_GPUDepthStencilTargetInfo) {
+            .texture = depth_texture,
+            .clear_depth = 1,
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_DONT_CARE,
+        };
 
         render_pass = SDL_BeginGPURenderPass(command_buf, &color_target_info, 1, &depth_target_info);
 
         SDL_BindGPUGraphicsPipeline(render_pass, mvp_pipeline);
 
         // Uniform
-        SDL_PushGPUVertexUniformData(command_buf, 0, &mvp_uniform_data, sizeof(mvp_uniform_data));
-        SDL_PushGPUVertexUniformData(command_buf, 3, &color_uniform_data, sizeof(color_uniform_data)); // FIXME
+        SDL_PushGPUVertexUniformData(command_buf, 0, &view_uniform_data, sizeof(view_uniform_data));
 
         // Draw
-        SDL_GPUBufferBinding buf_binding_list_buf[1] = {};
+        SDL_GPUBufferBinding buf_binding_list_buf[2] = {};
         buf_binding_list_buf[0] = (SDL_GPUBufferBinding) {
-            .buffer = mvp_vertex_buf,
+            .buffer = vertex_buf,
             .offset = 0
         };
-        SDL_BindGPUVertexBuffers(render_pass, 0, buf_binding_list_buf, 1);
+        buf_binding_list_buf[1] = (SDL_GPUBufferBinding) {
+            .buffer = transform_buf,
+            .offset = 0
+        };
+        SDL_BindGPUVertexBuffers(render_pass, 0, buf_binding_list_buf, 2);
 
-        SDL_DrawGPUPrimitives(render_pass, sizeof(box_verticies) / sizeof(f32), 1, 0, 0);
+        u32 num_verticies = sizeof(box_verticies) / (3 * sizeof(f32));
+        u32 num_transform = 1;
+        SDL_DrawGPUPrimitives(render_pass, num_verticies, num_transform, 0, 0);
 
         //
         SDL_EndGPURenderPass(render_pass);
@@ -305,9 +365,13 @@ int main() {
 
     // Clean up
     SDL_ReleaseGPUTexture(gpu_device, depth_texture);
+
     SDL_ReleaseGPUGraphicsPipeline(gpu_device, mvp_pipeline);
-    SDL_ReleaseGPUBuffer(gpu_device, mvp_vertex_buf);
-    SDL_ReleaseGPUTransferBuffer(gpu_device, mvp_vertex_transfer_buf);
+    SDL_ReleaseGPUBuffer(gpu_device, vertex_buf);
+    SDL_ReleaseGPUBuffer(gpu_device, transform_buf);
+
+    SDL_ReleaseGPUTransferBuffer(gpu_device, transform_transfer_buf); // FIXME
+
     SDL_DestroyGPUDevice(gpu_device);
 
     SDL_DestroyWindow(window);
