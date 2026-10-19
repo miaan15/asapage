@@ -16,18 +16,27 @@ import vertex_box;
 using namespace asapage;
 
 struct alignas(16) MVPUniformData {
-    f32 screen_size[2];
-    f32 focal_length;
+    f32 camera_pos[3];
     f32 __padding_0;
 
-    f32 translation[3];
+    f32 camera_target[3];
     f32 __padding_1;
 
+    f32 camera_up[3];
+    f32 __padding_2;
+
+    f32 screen_size[2];
+
+    f32 focal_length;
+    f32 __padding_3;
+
+    f32 translation[3];
+    f32 __padding_4;
+
     f32 rotation[4];
-    //
 
     f32 scale[3];
-    f32 __padding_2;
+    f32 __padding_5;
 };
 
 struct alignas(16) ColorUniformData { // FIXME
@@ -52,8 +61,11 @@ int main() {
 
     // Data
     MVPUniformData mvp_uniform_data = {
+        .camera_pos = { 3, 3, 0 },
+        .camera_target = { 0, 0, 0 },
+        .camera_up = { 0, 1, 0 },
         .screen_size = { (f32)window_w / (f32)window_h, 1 },
-        .focal_length = 2.5,
+        .focal_length = 1,
         .translation = { 0, 0, 0 },
         .rotation = { 0, 0, 0, 1 },
         .scale = { 1, 1, 1 }
