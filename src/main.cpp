@@ -15,19 +15,24 @@ import vertex_box;
 
 using namespace asapage;
 
-struct alignas(16) TransformUniform {
-    f32 u_translation[3];
-    f32 _pad0;
+struct alignas(16) MVPUniformData {
+    f32 screen_size[2];
+    f32 focal_length;
+    f32 __padding_0;
 
-    f32 u_rotation[4];
+    f32 translation[3];
+    f32 __padding_1;
 
-    f32 u_scale[3];
-    f32 _pad1;
+    f32 rotation[4];
+    //
+
+    f32 scale[3];
+    f32 __padding_2;
 };
 
-struct alignas(16) ColorUniform {
+struct alignas(16) ColorUniformData { // FIXME
     f32 u_color[3];
-    f32 _pad0;
+    f32 __padding_0[1];
 };
 
 int main() {
@@ -35,11 +40,27 @@ int main() {
 
     file_sys_init();
 
+    // FIXME generalize this
+    int window_w, window_h;
+    SDL_GetWindowSizeInPixels(window, &window_w, &window_h);
+
     // Render GPU stuff
     constexpr u32 VERTEX_BUFFER_SIZE = 1 << 10 << 10; // ~1 MB
     SDL_GPUBuffer *mvp_vertex_buf;
     SDL_GPUTransferBuffer *mvp_vertex_transfer_buf;
     SDL_GPUGraphicsPipeline *mvp_pipeline;
+
+    // Data
+    MVPUniformData mvp_uniform_data = {
+        .screen_size = { (f32)window_w / (f32)window_h, 1 },
+        .focal_length = 2.5,
+        .translation = { 0, 0, 0 },
+        .rotation = { 0, 0, 0, 1 },
+        .scale = { 1, 1, 1 }
+    };
+    ColorUniformData color_uniform_data = { // FIXME
+        .u_color = {1, 1, 1}
+    };
 
     // Pipelines
     {
@@ -49,7 +70,7 @@ int main() {
         char fragment_shader_path[512] = "mvp_shader.frag";
         file_to_asset_path(fragment_shader_path, 512);
 
-        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE_VERTEX, 0, 0, 0, 2);
+        SDL_GPUShader *vertex_shader = create_shader_glsl_file(vertex_shader_path, SHADER_STAGE_VERTEX, 0, 0, 0, 4);
         SDL_GPUShader *fragment_shader = create_shader_glsl_file(fragment_shader_path, SHADER_STAGE_FRAGMENT, 0, 0, 0, 0);
         if (vertex_shader == nullptr || fragment_shader == nullptr) { assert(false); }
 
@@ -168,10 +189,6 @@ int main() {
         SDL_SubmitGPUCommandBuffer(upload_command_buf);
     }
 
-    // FIXME generalize this
-    int window_w, window_h;
-    SDL_GetWindowSizeInPixels(window, &window_w, &window_h);
-
     // Depth texture
     SDL_GPUTextureCreateInfo depth_texture_create_info = {
         .type = SDL_GPU_TEXTURETYPE_2D,
@@ -184,16 +201,8 @@ int main() {
     };
     SDL_GPUTexture *depth_texture = SDL_CreateGPUTexture(gpu_device, &depth_texture_create_info);
 
-    TransformUniform transform_data = { // FIXME
-        .u_translation = {0, 0, 0},
-        .u_rotation = {0, 0, 0, 1},
-        .u_scale = {1, 1, 1}
-    };
-    ColorUniform color_data = { // FIXME
-        .u_color = {1, 1, 1}
-    };
-
     f32 x_rot = 0, y_rot = 0; // FIXME test rotate
+    f32 z_pos = 0; // FIXME test depth
 
     bool app_running = true;
     while (app_running) {
@@ -208,16 +217,19 @@ int main() {
                 if (event.key.scancode == SDL_SCANCODE_A) { y_rot -= 3.14159 / 180.0; }
                 if (event.key.scancode == SDL_SCANCODE_S) { x_rot += 3.14159 / 180.0; }
                 if (event.key.scancode == SDL_SCANCODE_D) { y_rot += 3.14159 / 180.0; }
+                if (event.key.scancode == SDL_SCANCODE_E) { z_pos += .1; }
+                if (event.key.scancode == SDL_SCANCODE_Q) { z_pos -= .1; }
             }
         }
 
         { // FIXME test rotate
             f32 cx = cos(x_rot * 0.5f), sx = sin(x_rot * 0.5f);
             f32 cy = cos(y_rot * 0.5f), sy = sin(y_rot * 0.5f);
-            transform_data.u_rotation[0] = sx * cy;
-            transform_data.u_rotation[1] = cx * sy;
-            transform_data.u_rotation[2] = -sx * sy;
-            transform_data.u_rotation[3] = cx * cy;
+            mvp_uniform_data.rotation[0] = sx * cy;
+            mvp_uniform_data.rotation[1] = cx * sy;
+            mvp_uniform_data.rotation[2] = -sx * sy;
+            mvp_uniform_data.rotation[3] = cx * cy;
+            mvp_uniform_data.translation[2] = z_pos;
         }
 
         // Command buffer
@@ -255,8 +267,8 @@ int main() {
         SDL_BindGPUGraphicsPipeline(render_pass, mvp_pipeline);
 
         // Uniform
-        SDL_PushGPUVertexUniformData(command_buf, 0, &transform_data, sizeof(transform_data));
-        SDL_PushGPUVertexUniformData(command_buf, 1, &color_data, sizeof(color_data));
+        SDL_PushGPUVertexUniformData(command_buf, 0, &mvp_uniform_data, sizeof(mvp_uniform_data));
+        SDL_PushGPUVertexUniformData(command_buf, 3, &color_uniform_data, sizeof(color_uniform_data)); // FIXME
 
         // Draw
         SDL_GPUBufferBinding buf_binding_list_buf[1] = {};

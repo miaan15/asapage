@@ -14,7 +14,7 @@ SDL_GPUDevice *gpu_device;
 void internal_init() {
     SDL_Init(SDL_INIT_VIDEO);
 
-    window = SDL_CreateWindow("", 800, 800, SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
 
     gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
 
