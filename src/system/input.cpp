@@ -140,13 +140,13 @@ enum struct SCANCODE {
 // the input has "cache" mechanism
 // user's input can only be read in frame update, but usually input used for tick update (for gameplay/physics/...).
 // "cache" is when the input between 2 tick preserved until the next tick happens
-struct input_sys {
+struct InputSys {
     const bool *cur_keyboard_state;
     bool *last_keyboard_state;
     u8 *cache_keyboard_state; // state as bitmask: 0-down, 1-on, 2-up
     int numkeys;
 };
-inline input_sys input_sys = {};
+inline InputSys input_sys = {};
 
 constexpr u8 _INPUT_CACHE_DOWN_STATE = 0b001;
 constexpr u8 _INPUT_CACHE_ON_STATE = 0b010;
@@ -195,7 +195,7 @@ bool input_is_key_up_cache(SCANCODE scancode) {
 // call this before SDL_PollEvent
 void input_pre_poll() {
     // update cache_keyboard_state
-    for (usize i = 0; i < input_sys.numkeys; i++) {
+    for (i32 i = 0; i < input_sys.numkeys; i++) {
         bool cur_state = input_sys.cur_keyboard_state[i];
         bool last_state = input_sys.last_keyboard_state[i];
 
@@ -214,7 +214,7 @@ void input_pre_poll() {
 
 // call this after all tick update input request
 void input_reset_cache() {
-    for (usize i = 0; i < input_sys.numkeys; i++) {
+    for (i32 i = 0; i < input_sys.numkeys; i++) {
         // if a key is "down" and "up" before a tick, delay the "up" state for 1 tick so that "down" and "up" not happens in single tick
         input_sys.cache_keyboard_state[i] =
             input_sys.cache_keyboard_state[i] == (_INPUT_CACHE_DOWN_STATE | _INPUT_CACHE_UP_STATE) ?

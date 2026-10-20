@@ -1,5 +1,4 @@
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -12,6 +11,10 @@ import context;
 import file;
 import input;
 import shader;
+
+import pool;
+import map;
+import mapstr;
 
 import vertex_box;
 

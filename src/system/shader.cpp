@@ -48,7 +48,7 @@ SDL_GPUShader *create_shader_glsl_file(const char *glsl_code_path,
 
     constexpr size_t FREAD_DATA_READ_SIZE = 1024;
     u8 fread_data_read_buf[FREAD_DATA_READ_SIZE];
-    usize fread_data_read_len;
+    i32 fread_data_read_len;
     while (true) {
         fread_data_read_len = fread(fread_data_read_buf, 1, FREAD_DATA_READ_SIZE, fp_glslc_command);
 
@@ -107,7 +107,7 @@ SDL_GPUShader *create_shader_glsl_raw(const char *glsl_code,
 
     constexpr size_t FREAD_DATA_READ_SIZE = 1024;
     u8 fread_data_read_buf[FREAD_DATA_READ_SIZE];
-    usize fread_data_read_len;
+    i32 fread_data_read_len;
     while (true) {
         fread_data_read_len = fread(fread_data_read_buf, 1, FREAD_DATA_READ_SIZE, fp_glslc_command);
 

@@ -14,17 +14,17 @@ constexpr usize TICK_ARENA_SIZE = 50 << 10 << 10;
 constexpr usize FRAME_ARENA_SIZE = 50 << 10 << 10;
 
 // Arena
-arena omni_arena;
+Arena omni_arena;
 
-arena tick_arena_buf[2];
+Arena tick_arena_buf[2];
 usize tick_arena_cur_idx;
 
-arena frame_arena_buf[2];
+Arena frame_arena_buf[2];
 usize frame_arena_cur_idx;
 
-arena *omni_arena_ptr;
-arena *tick_arena_ptr;
-arena *frame_arena_ptr;
+Arena *omni_arena_ptr;
+Arena *tick_arena_ptr;
+Arena *frame_arena_ptr;
 
 // SDL
 SDL_Window *window;
