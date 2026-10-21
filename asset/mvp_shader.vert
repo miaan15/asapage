@@ -21,8 +21,8 @@ mat4 perspective_matrix(float fov, float aspect, float near, float far) {
     return mat4(
         1 / (aspect * htfov), 0,         0,                            0,
         0,                    1 / htfov, 0,                            0,
-        0,                    0,         far / (near - far),           1,
-        0,                    0,         -(far * near) / (near - far), 0
+        0,                    0,         far / (far - near),           1,
+        0.0,                  0.0,       -(far * near) / (far - near), 0.0
     );
 }
 
@@ -77,5 +77,5 @@ void main() {
 
     gl_Position = proj * view * model * vec4(i_pos, 1.0);
 
-    o_color = vec4((i_pos + vec3(1.0)) * 0.5, 1.0);
+    o_color = vec4((i_pos + vec3(1.0)) / 2 , 1.0);
 }
