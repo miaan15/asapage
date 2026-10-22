@@ -44,7 +44,7 @@ void upload_data_to_gpu_buf(SDL_GPUBuffer *gpu_buf, void *data_buf, i32 data_buf
     SDL_ReleaseGPUTransferBuffer(gpu_device, transfer_buf);
 }
 
-i32 model_load(SDL_GPUBuffer **vertices_buf, SDL_GPUBuffer **indices_buf, const char *path) {
+i32 model_load(SDL_GPUBuffer **vertices_buf, SDL_GPUBuffer **normals_buf, SDL_GPUBuffer **indices_buf, const char *path) {
     char true_path[256];
     strcpy(true_path, path);
     file_to_asset_path(true_path, 256);
@@ -76,7 +76,6 @@ i32 model_load(SDL_GPUBuffer **vertices_buf, SDL_GPUBuffer **indices_buf, const 
                     break;
                 }
             }
-
             if (vertices_accessor == nullptr) {
                 printf("somehow the model has no vertices??? %s\n", true_path);
                 return -1;
@@ -90,7 +89,6 @@ i32 model_load(SDL_GPUBuffer **vertices_buf, SDL_GPUBuffer **indices_buf, const 
 
             // indices
             cgltf_accessor *indices_accessor = primitive->indices;
-
             if (indices_accessor == nullptr) {
                 printf("somehow the model has no indices??? %s\n", true_path);
                 return -1;
@@ -102,13 +100,34 @@ i32 model_load(SDL_GPUBuffer **vertices_buf, SDL_GPUBuffer **indices_buf, const 
 
             cgltf_accessor_unpack_indices(indices_accessor, indices_data_buf, sizeof(i32), indices_num);
 
-            // FIXME only one mesh, this will overwrite other
+            // normals
+            cgltf_accessor *normals_accessor = nullptr;
+            for (cgltf_size k = 0; k < primitive->attributes_count; k++) {
+                if (primitive->attributes[k].type == cgltf_attribute_type_normal) {
+                    normals_accessor = primitive->attributes[k].data;
+                    break;
+                }
+            }
+            if (normals_accessor == nullptr) {
+                printf("ok this sh t has no normals? %s", true_path);
+                return -1;
+            }
+
+            i32 normals_num = normals_accessor->count;
+            i32 normals_data_buf_size = 3 * normals_num * sizeof(float);
+            float *normals_data_buf = (float*)malloc(normals_data_buf_size);
+
+            cgltf_accessor_unpack_floats(normals_accessor, normals_data_buf, 3 * normals_num);
+
+            // FIXME only one mesh, this will overwrite other if this model has more than 1 mesh
             // upload to GPU buf
             upload_data_to_gpu_buf(*vertices_buf, vertices_data_buf, vertices_data_buf_size);
             upload_data_to_gpu_buf(*indices_buf, indices_data_buf, indices_data_buf_size);
+            upload_data_to_gpu_buf(*normals_buf, normals_data_buf, normals_data_buf_size);
 
             free(vertices_data_buf);
             free(indices_data_buf);
+            free(normals_data_buf);
 
             total_indices_num += indices_num;
         }
@@ -132,56 +151,67 @@ void init_pipeline(SDL_GPUGraphicsPipeline **pipeline, SDL_GPUShader *vertex_sha
     pipeline_cinfo.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     // vertex input state
-    SDL_GPUVertexBufferDescription vertex_buffer_decs_list_buf[2] = {}; {
-        vertex_buffer_decs_list_buf[0] = {
+    SDL_GPUVertexBufferDescription vertex_buffer_decs_list_buf[3] = {}; {
+        vertex_buffer_decs_list_buf[0] = { // vertex pos
             .slot = 0,
             .pitch = 3 * sizeof(f32),
             .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
         };
-        vertex_buffer_decs_list_buf[1] = {
+        vertex_buffer_decs_list_buf[1] = { // vertex normal
             .slot = 1,
+            .pitch = 3 * sizeof(f32),
+            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+        };
+        vertex_buffer_decs_list_buf[2] = { // index
+            .slot = 2,
             .pitch = sizeof(Transform),
             .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE,
         };
     }
 
-    SDL_GPUVertexAttribute vertex_attribute_list_buf[4] = {}; {
+    SDL_GPUVertexAttribute vertex_attribute_list_buf[5] = {}; {
         vertex_attribute_list_buf[0] = { // layout(location = 0) in vec3 i_pos;
             .location = 0,
             .buffer_slot = 0,
             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
             .offset = 0,
         };
-        vertex_attribute_list_buf[1] = { // layout(location = 1) in vec3 i_translation;
+        vertex_attribute_list_buf[1] = { // layout(location = 1) in vec3 i_normal;
             .location = 1,
             .buffer_slot = 1,
             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            .offset = 0,
+        };
+        vertex_attribute_list_buf[2] = { // layout(location = 4) in vec3 i_translation;
+            .location = 4,
+            .buffer_slot = 2,
+            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
             .offset = offsetof(Transform, translation),
         };
-        vertex_attribute_list_buf[2] = { // layout(location = 2) in vec4 i_rotation;
-            .location = 2,
-            .buffer_slot = 1,
+        vertex_attribute_list_buf[3] = { // layout(location = 5) in vec4 i_rotation;
+            .location = 5,
+            .buffer_slot = 2,
             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
             .offset = offsetof(Transform, rotation),
         };
-        vertex_attribute_list_buf[3] = { // layout(location = 3) in vec3 i_scale;
-            .location = 3,
-            .buffer_slot = 1,
+        vertex_attribute_list_buf[4] = { // layout(location = 6) in vec3 i_scale;
+            .location = 6,
+            .buffer_slot = 2,
             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
             .offset = offsetof(Transform, scale),
         };
     }
 
     SDL_GPUVertexInputState vertex_input_state = {
-        .vertex_buffer_descriptions = vertex_buffer_decs_list_buf, .num_vertex_buffers = 2,
-        .vertex_attributes = vertex_attribute_list_buf, .num_vertex_attributes = 4,
+        .vertex_buffer_descriptions = vertex_buffer_decs_list_buf, .num_vertex_buffers = 3,
+        .vertex_attributes = vertex_attribute_list_buf, .num_vertex_attributes = 5,
     };
     pipeline_cinfo.vertex_input_state = vertex_input_state;
 
     // pipeline target info
     SDL_GPUColorTargetDescription color_target_desc_list_buf[1] = {}; {
         color_target_desc_list_buf[0] = {
-            .format = SDL_GetGPUSwapchainTextureFormat(gpu_device, window),
+            .format = SDL_GetGPUSwapchainTextureFormat(gpu_device, window), // FIXME
         };
     }
 
@@ -194,7 +224,7 @@ void init_pipeline(SDL_GPUGraphicsPipeline **pipeline, SDL_GPUShader *vertex_sha
     // rasterizer
     SDL_GPURasterizerState rasterizer_state = {
         .cull_mode = SDL_GPU_CULLMODE_BACK,
-        .front_face = SDL_GPU_FRONTFACE_CLOCKWISE // because of left-hand coor
+        .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
     };
     pipeline_cinfo.rasterizer_state = rasterizer_state;
 
