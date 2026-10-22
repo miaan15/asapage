@@ -1,42 +1,125 @@
 #version 450
 
-layout(set = 1, binding = 0) uniform View {
-    vec2 u_screen_size;
-    vec3 u_camera_eye;
-    vec3 u_camera_center;
-    vec3 u_camera_up;
-    float u_camera_fov;
+struct InstanceAccessor {
+    uint model_idx;
+    uint transform_idx;
 };
 
-layout(location = 0) in vec3 i_pos;
-layout(location = 1) in vec3 i_normal;
+struct VertexAccessor {
+    uint placeholder;
+};
 
-layout(location = 4) in vec3 i_translation;
-layout(location = 5) in vec4 i_rotation;
-layout(location = 6) in vec3 i_scale;
+struct ModelHeader {
+    uint vertices_offset;
+    uint normals_offset;
+    uint indices_offset;
+    uint __padding_0;
+};
 
-layout(location = 0) out vec4 o_color;
-layout(location = 1) out vec2 o_uv;
+struct TransformData {
+    vec3 position;
+    float __padding_0;
+    vec4 rotation;
+    vec3 scale;
+    float __padding_1;
+};
+
+layout(set = 0, binding = 0) readonly buffer InstanceAccessorBuf {
+    InstanceAccessor instance_accessors[];
+};
+
+layout(set = 0, binding = 1) readonly buffer VertexAccessorBuf {
+    VertexAccessor vertex_accessors[];
+};
+
+layout(set = 0, binding = 2) readonly buffer ModelHeaderBuf {
+    ModelHeader model_headers[];
+};
+
+layout(set = 0, binding = 3) readonly buffer ModelVertexBuf {
+    vec4 model_vertices[];
+};
+
+layout(set = 0, binding = 4) readonly buffer ModelNormalBuf {
+    vec4 model_normals[];
+};
+
+layout(set = 0, binding = 5) readonly buffer ModelIndexBuf {
+    uint model_indices[];
+};
+
+layout(set = 0, binding = 6) readonly buffer TransformBuf {
+    TransformData transforms[];
+};
+
+layout(set = 0, binding = 7) readonly buffer ViewBuf {
+    vec2 view_size;
+    vec3 view_eye;
+    vec3 view_center;
+    vec3 view_up;
+    vec2 view_range;
+    float view_fov;
+};
+
+layout(location = 0) out vec3 o_pos;
+layout(location = 1) flat out vec3 fo_normal;
+
+mat4 perspective_matrix(float fov, float aspect, float near, float far);
+mat4 look_at_matrix(vec3 eye, vec3 center, vec3 up);
+mat4 translation_matrix(vec3 t);
+mat4 rotation_matrix(vec4 r);
+mat4 scale_matrix(vec3 s);
+
+void main() {
+    InstanceAccessor instance_accessor = instance_accessors[gl_InstanceIndex];
+    uint model_idx = instance_accessor.model_idx;
+    uint transform_idx = instance_accessor.transform_idx;
+
+    // model
+    ModelHeader model_header = model_headers[model_idx];
+    uint vertex_idx = model_indices[model_header.indices_offset + gl_VertexIndex];
+    vec3 vertex_pos = model_vertices[model_header.vertices_offset + vertex_idx].xyz;
+    vec3 vertex_normal = model_normals[model_header.normals_offset + vertex_idx].xyz;
+
+    // transform
+    vec3 position = transforms[transform_idx].position;
+    vec4 rotation = transforms[transform_idx].rotation;
+    vec3 scale = transforms[transform_idx].scale;
+
+    mat4 model = translation_matrix(position) * rotation_matrix(rotation) * scale_matrix(scale);
+    mat4 view = look_at_matrix(view_eye, view_center, view_up);
+    mat4 proj = perspective_matrix(view_fov, view_size.x / view_size.y, view_range.x, view_range.y);
+
+    gl_Position = proj * view * model * vec4(vertex_pos, 1);
+
+    vec4 world_pos = model * vec4(vertex_pos, 1);
+    o_pos = world_pos.xyz;
+
+    mat3 normal_matrix = mat3(rotation_matrix(rotation)) * mat3(scale_matrix(1.0 / scale));
+    fo_normal = normalize(normal_matrix * vertex_normal);
+}
 
 mat4 perspective_matrix(float fov, float aspect, float near, float far) {
-    float htfov = tan(fov / 2);
-    return mat4(
-        1 / (aspect * htfov), 0,         0,                            0,
-        0,                    1 / htfov, 0,                            0,
-        0,                    0,         far / (far - near),           1,
-        0,                    0,         -(far * near) / (far - near), 0
-    );
+    float tan_half_fov = tan(fov / 2);
+    mat4 res = mat4(0);
+    res[0][0] = 1 / (aspect * tan_half_fov);
+    res[1][1] = 1 / tan_half_fov;
+    res[2][2] = far / (far - near);
+    res[3][2] = -(far * near) / (far - near);
+    res[2][3] = 1;
+    return res;
 }
 
 mat4 look_at_matrix(vec3 eye, vec3 center, vec3 up) {
     vec3 f = normalize(center - eye);
     vec3 r = normalize(cross(f, up));
     vec3 u = cross(r, f);
+    float dr = dot(r, eye), du = dot(u, eye), df = dot(f, eye);
     return mat4(
-        r.x,          u.x,          f.x,          0,
-        r.y,          u.y,          f.y,          0,
-        r.z,          u.z,          f.z,          0,
-        -dot(r, eye), -dot(u, eye), -dot(f, eye), 1
+        r.x, u.x, f.x, 0,
+        r.y, u.y, f.y, 0,
+        r.z, u.z, f.z, 0,
+        -dr, -du, -df, 1
     );
 }
 
@@ -52,11 +135,14 @@ mat4 translation_matrix(vec3 t) {
 mat4 rotation_matrix(vec4 r) {
     r = normalize(r);
     float x = r.x, y = r.y, z = r.z, w = r.w;
+    float xx = r.x * r.x, yy = r.y * r.y, zz = r.z * r.z;
+    float xy = r.x * r.y, xz = r.x * r.z, yz = r.y * r.z;
+    float wx = r.w * r.x, wy = r.w * r.y, wz = r.w * r.z;
     return mat4(
-        1 - 2 * (y*y + z*z), 2 * (x*y + z*w),     2 * (x*z - y*w),     0,
-        2 * (x*y - z*w),     1 - 2 * (x*x + z*z), 2 * (y*z + x*w),     0,
-        2 * (x*z + y*w),     2 * (y*z - x*w),     1 - 2 * (x*x + y*y), 0,
-        0,                   0,                   0,                   1
+        1 - 2 * (yy + zz),     2 * (xy + wz),     2 * (xz - wy), 0,
+            2 * (xy - wz), 1 - 2 * (xx + zz),     2 * (yz + wx), 0,
+            2 * (xz + wy),     2 * (yz - wx), 1 - 2 * (xx + yy), 0,
+                        0,                 0,                 0, 1
     );
 }
 
@@ -67,25 +153,4 @@ mat4 scale_matrix(vec3 s) {
         0,   0,   s.z, 0,
         0,   0,   0,   1
     );
-}
-
-void main() {
-    mat4 model = translation_matrix(i_translation) *
-                 rotation_matrix(i_rotation) *
-                 scale_matrix(i_scale);
-
-    mat4 view = look_at_matrix(u_camera_eye, u_camera_center, u_camera_up);
-    mat4 proj = perspective_matrix(u_camera_fov, u_screen_size.x / u_screen_size.y, 0.1, 100.0);
-
-    gl_Position = proj * view * model * vec4(i_pos, 1.0);
-
-    vec3 light_dir = normalize(u_camera_center - u_camera_eye);
-    float cos_angle = 2 * dot(i_normal, -light_dir);
-
-    // vec3 color = (i_pos + vec3(1)) / 2 * 0.8;
-    // color += pow(max(0, cos_angle * 0.1), 0.5);
-    // o_color = vec4(color, 1);
-    o_uv = (i_pos.xy + vec2(1)) / 2;
-
-    o_color = vec4(o_uv, 0, 1);
 }
