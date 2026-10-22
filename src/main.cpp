@@ -12,6 +12,7 @@ import file;
 import input;
 import shader;
 
+import math;
 import pool;
 import map;
 import mapstr;
