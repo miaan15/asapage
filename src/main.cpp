@@ -21,7 +21,7 @@ import graphics_model;
 
 using namespace asapage;
 
-struct alignas(16) ViewData {
+struct ViewData {
     f32 view_size[2];
     f32 __padding_0[2];
     f32 view_eye[3];
@@ -35,12 +35,12 @@ struct alignas(16) ViewData {
     f32 __padding_4;
 };
 
-struct alignas(16) EnvData {
+struct EnvData {
     f32 env_light_pos[3];
     f32 env_light_intensity;
 };
 
-struct alignas(16) Transform {
+struct Transform {
     f32 position[3];
     f32 __padding_0;
     f32 rotation[4];
@@ -48,16 +48,16 @@ struct alignas(16) Transform {
     f32 __padding_1;
 };
 
-struct alignas(16) InstanceAccessor {
+struct InstanceAccessor {
     u32 model_idx;
     u32 transform_idx;
 };
 
-struct alignas(16) VertexAccessor {
+struct VertexAccessor {
     u32 placeholder;
 };
 
-struct alignas(16) ModelHeader {
+struct ModelHeader {
     u32 vertices_offset;
     u32 normals_offset;
     u32 indices_offset;
@@ -75,10 +75,9 @@ int main() {
     int window_w, window_h;
     SDL_GetWindowSizeInPixels(window, &window_w, &window_h);
 
-    // uniform
     ViewData view_data = {
         .view_size = { (f32)window_w, (f32)window_h },
-        .view_eye = { 0, 5, 7 },
+        .view_eye = { 0, 8, 10 },
         .view_center = { 0, 0, 0 },
         .view_up = { 0, 1, 0 },
         .view_range = { 0.1f, 100.0f },
@@ -86,14 +85,17 @@ int main() {
     };
 
     EnvData env_data = {
-        .env_light_pos = { 0, 5, 7 },
-        .env_light_intensity = 1
+        .env_light_pos = { 0, 100, 7 },
+        .env_light_intensity = 3
     };
 
     f32 material_color[4] = { 0.8f, 0.3f, 0.2f, 1.0f };
 
-    InstanceAccessor instance_accessors[1] = {
-        { .model_idx = 0, .transform_idx = 0 }
+    InstanceAccessor instance_accessors[4] = {
+        { .model_idx = 0, .transform_idx = 0 },
+        { .model_idx = 0, .transform_idx = 1 },
+        { .model_idx = 0, .transform_idx = 2 },
+        { .model_idx = 0, .transform_idx = 3 }
     };
 
     VertexAccessor vertex_accessors[1] = {
@@ -104,12 +106,22 @@ int main() {
         { .vertices_offset = 0, .normals_offset = 0, .indices_offset = 0 }
     };
 
-    Transform transform_list[1] = {
+    Transform transform_list[3] = {
         {
             .position = { 0, 0, 0 },
             .rotation = { 0, 0, 0, 1 },
+            .scale = { 1, -1, 1 },
+        },
+        {
+            .position = { -2, 1, 0 },
+            .rotation = { 0, 0, 0, 1 },
             .scale = { 1, 1, 1 },
-        }
+        },
+        {
+            .position = { 2, 1, 0 },
+            .rotation = { 0, 1, 0, .3 },
+            .scale = { 1, 1, 1 },
+        },
     };
 
     // shader + pipeline
@@ -209,21 +221,21 @@ int main() {
                 SDL_BindGPUGraphicsPipeline(render_pass, pipeline);
 
                 SDL_GPUBuffer* vert_storage_buffers[] = {
-                    instance_accessor_buf, // binding 0
-                    vertex_accessor_buf,   // binding 1
-                    model_header_buf,      // binding 2
-                    vertices_buf,          // binding 3
-                    normals_buf,           // binding 4
-                    indices_buf,           // binding 5
-                    transform_buf,         // binding 6
-                    view_buf               // binding 7
+                    instance_accessor_buf,
+                    vertex_accessor_buf,
+                    model_header_buf,
+                    vertices_buf,
+                    normals_buf,
+                    indices_buf,
+                    transform_buf,
+                    view_buf
                 };
                 SDL_BindGPUVertexStorageBuffers(render_pass, 0, vert_storage_buffers, 8);
 
                 SDL_GPUBuffer* frag_storage_buffers[] = {
-                    color_buf,             // binding 0
-                    view_buf,              // binding 1
-                    env_buf                // binding 2
+                    color_buf,
+                    view_buf,
+                    env_buf
                 };
                 SDL_BindGPUFragmentStorageBuffers(render_pass, 0, frag_storage_buffers, 3);
 

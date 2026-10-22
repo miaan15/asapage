@@ -13,7 +13,7 @@ struct ModelHeader {
     uint vertices_offset;
     uint normals_offset;
     uint indices_offset;
-    uint __padding_0;
+    float __padding_0;
 };
 
 struct TransformData {
@@ -71,9 +71,8 @@ mat4 rotation_matrix(vec4 r);
 mat4 scale_matrix(vec3 s);
 
 void main() {
-    InstanceAccessor instance_accessor = instance_accessors[gl_InstanceIndex];
-    uint model_idx = instance_accessor.model_idx;
-    uint transform_idx = instance_accessor.transform_idx;
+    uint model_idx = instance_accessors[gl_InstanceIndex].model_idx;
+    uint transform_idx = instance_accessors[gl_InstanceIndex].transform_idx;
 
     // model
     ModelHeader model_header = model_headers[model_idx];

@@ -26,9 +26,9 @@ layout(location = 0) out vec4 o_color;
 void main() {
     vec3 light_dir = normalize(i_pos - env_light_pos);
     vec3 reflect_light_dir = (2.0 * dot(fi_normal, -light_dir) * fi_normal) + light_dir;
-    vec3 view_dir = normalize(i_pos - view_eye);
+    vec3 view_dir = normalize(view_eye - i_pos);
 
     float light_val = pow(max(0.0, dot(reflect_light_dir, view_dir)), env_light_intensity);
 
-    o_color = vec4(color * .7 + light_val * .5, 1.0);
+    o_color = vec4(color * .7 + light_val * .5, 1);
 }

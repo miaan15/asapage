@@ -175,7 +175,7 @@ void init_pipeline(SDL_GPUGraphicsPipeline **pipeline, SDL_GPUShader *vertex_sha
 
     // rasterizer
     SDL_GPURasterizerState rasterizer_state = {
-        .cull_mode = SDL_GPU_CULLMODE_BACK,
+        .cull_mode = SDL_GPU_CULLMODE_NONE,
         .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
     };
     pipeline_cinfo.rasterizer_state = rasterizer_state;
