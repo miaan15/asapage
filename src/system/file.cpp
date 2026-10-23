@@ -16,22 +16,22 @@ constexpr char FILE_SEPARATOR = '\\';
 constexpr char FILE_SEPARATOR = '/';
 #endif
 
-char* dir_project_raw;
-char* dir_source_raw;
-char* dir_asset_raw;
+char dir_project_raw[512];
+char dir_source_raw[512];
+char dir_asset_raw[512];
 
 string_ref dir_project;
 string_ref dir_source;
 string_ref dir_asset;
 
 void file_sys_init() {
-    asprintf(&dir_project_raw, "%s", _PROJECT_DIR); // need to free but whatever
+    sprintf(dir_project_raw, "%s", _PROJECT_DIR);
     dir_project = make_string_ref(dir_project_raw);
 
-    asprintf(&dir_source_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "src");
+    sprintf(dir_source_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "src");
     dir_source = make_string_ref(dir_source_raw);
 
-    asprintf(&dir_asset_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "asset");
+    sprintf(dir_asset_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "asset");
     dir_asset = make_string_ref(dir_asset_raw);
 }
 

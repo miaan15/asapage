@@ -56,15 +56,15 @@ void main() {
     vec3 view_dir = normalize(view_eye - i_pos);
     vec3 reflect_light_dir = reflect(-light_dir, fi_normal);
 
-    float ambient_strength = 0.25; // FIXME
+    float ambient_strength = 0.1; // FIXME
     vec3 ambient = ambient_strength * albedo;
 
     float diff = max(dot(fi_normal, light_dir), 0);
-    vec3 diffuse = diff * albedo;
+    vec3 diffuse = diff * albedo * 1;
 
-    float shininess = 32.0; // FIXME
+    float shininess = 10; // FIXME
     float spec = pow(max(dot(reflect_light_dir, view_dir), 0), shininess);
-    vec3 specular = vec3(0.5) * spec;
+    vec3 specular = vec3(1) * spec * 0.5;
 
     vec3 final_color = ambient + (diffuse + specular) * env_light_intensity;
     o_color = vec4(final_color, 1.0);
