@@ -1,68 +1,66 @@
 #version 450
 
-struct InstanceAccessor {
+// per instance
+struct PerInstanceAccessor {
     uint model_idx;
     uint transform_idx;
+    uint color_idx;
+};
+layout(set = 0, binding = 0) readonly buffer PerInstanceAccessorBuf {
+    PerInstanceAccessor instance_accessors[];
 };
 
-struct VertexAccessor {
+// per vertex
+struct PerVertexAccessor {
     uint placeholder;
 };
+layout(set = 0, binding = 1) readonly buffer PerVertexAccessorBuf {
+    PerVertexAccessor vertex_accessors[];
+};
 
+// model
 struct ModelHeader {
     uint vertices_offset;
     uint normals_offset;
     uint indices_offset;
-    float __padding_0;
 };
-
-struct TransformData {
-    vec3 position;
-    float __padding_0;
-    vec4 rotation;
-    vec3 scale;
-    float __padding_1;
-};
-
-layout(set = 0, binding = 0) readonly buffer InstanceAccessorBuf {
-    InstanceAccessor instance_accessors[];
-};
-
-layout(set = 0, binding = 1) readonly buffer VertexAccessorBuf {
-    VertexAccessor vertex_accessors[];
-};
-
 layout(set = 0, binding = 2) readonly buffer ModelHeaderBuf {
     ModelHeader model_headers[];
 };
 
 layout(set = 0, binding = 3) readonly buffer ModelVertexBuf {
-    vec4 model_vertices[];
+    vec3 model_vertices[];
 };
-
 layout(set = 0, binding = 4) readonly buffer ModelNormalBuf {
-    vec4 model_normals[];
+    vec3 model_normals[];
 };
-
 layout(set = 0, binding = 5) readonly buffer ModelIndexBuf {
     uint model_indices[];
 };
 
+// transform
+struct Transform {
+    vec3 position;
+    vec4 rotation;
+    vec3 scale;
+};
 layout(set = 0, binding = 6) readonly buffer TransformBuf {
-    TransformData transforms[];
+    Transform transforms[];
 };
 
+// view
 layout(set = 0, binding = 7) readonly buffer ViewBuf {
     vec2 view_size;
+    vec2 view_range;
     vec3 view_eye;
     vec3 view_center;
     vec3 view_up;
-    vec2 view_range;
     float view_fov;
 };
 
-layout(location = 0) out vec3 o_pos;
-layout(location = 1) flat out vec3 fo_normal;
+layout(location = 0) flat out uint o_instance_idx;
+layout(location = 1) out vec3 o_pos;
+layout(location = 2) flat out vec3 fo_normal;
 
 mat4 perspective_matrix(float fov, float aspect, float near, float far);
 mat4 look_at_matrix(vec3 eye, vec3 center, vec3 up);
@@ -90,6 +88,8 @@ void main() {
     mat4 proj = perspective_matrix(view_fov, view_size.x / view_size.y, view_range.x, view_range.y);
 
     gl_Position = proj * view * model * vec4(vertex_pos, 1);
+
+    o_instance_idx = gl_InstanceIndex;
 
     vec4 world_pos = model * vec4(vertex_pos, 1);
     o_pos = world_pos.xyz;

@@ -27,7 +27,7 @@ Arena *tick_arena_ptr;
 Arena *frame_arena_ptr;
 
 // SDL
-SDL_Window *window;
+SDL_Window *sdl_window;
 SDL_GPUDevice *gpu_device;
 
 void internal_init() {
@@ -49,11 +49,11 @@ void internal_init() {
     // SDL
     SDL_Init(SDL_INIT_VIDEO);
 
-    window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
+    sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
 
     gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
 
-    SDL_ClaimWindowForGPUDevice(gpu_device, window);
+    SDL_ClaimWindowForGPUDevice(gpu_device, sdl_window);
 }
 
 }

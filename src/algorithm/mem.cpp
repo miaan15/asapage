@@ -1,6 +1,5 @@
 module;
 
-#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -11,7 +10,7 @@ import define;
 
 export namespace asapage {
 
-constexpr usize MEM_MAX_ALIGN = alignof(max_align_t);
+constexpr usize MEM_MAX_ALIGN = 16;
 
 void mem_copy(void *__restrict dest, const void *__restrict src, usize size) {
     memcpy(dest, src, size);

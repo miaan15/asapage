@@ -98,14 +98,16 @@ template <typename T> bool pool_destroy(Pool<T> *pool, T *instance, i32 validati
     return true;
 }
 
-template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_instance) {
+template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_instance, bool include_dead = false) {
     if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
     T *instance = pool_stub(pool);
     bool valid = false;
 
-    while (idx < pool->max_idx && pool->flag_buf[idx] >= 0) { idx++; }
+    if (!include_dead) {
+        while (idx < pool->max_idx && pool->flag_buf[idx] >= 0) { idx++; }
+    }
 
     valid = idx < pool->max_idx;
 

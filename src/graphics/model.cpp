@@ -163,7 +163,7 @@ void init_pipeline(SDL_GPUGraphicsPipeline **pipeline, SDL_GPUShader *vertex_sha
     // pipeline target info
     SDL_GPUColorTargetDescription color_target_desc_list_buf[1] = {}; {
         color_target_desc_list_buf[0] = {
-            .format = SDL_GetGPUSwapchainTextureFormat(gpu_device, window), // FIXME
+            .format = SDL_GetGPUSwapchainTextureFormat(gpu_device, sdl_window), // FIXME
         };
     }
 
