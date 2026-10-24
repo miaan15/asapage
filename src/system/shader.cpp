@@ -33,7 +33,7 @@ SDL_GPUShader *create_shader_glsl_file(const char *glsl_code_path,
     char command[1024];
     sprintf(command, "glslc -fshader-stage=%s -O%s -x glsl %s -o -", stage_flag_string, optimization_flag_string, glsl_code_path);
 
-    FILE *fp_glslc_command = popen(command, "r");
+    FILE *fp_glslc_command = popen(command, "rb");
     if (fp_glslc_command == NULL) {
         printf("command wrong: %s", command);
         return NULL;

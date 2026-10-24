@@ -68,16 +68,7 @@ void internal_init() {
 
     sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
 
-    gpu_device = SDL_CreateGPUDevice(
-    #if PLATFORM == WINDOWS
-        SDL_GPU_SHADERFORMAT_DXIL,
-    #elif PLATFORM == MACOS
-        SDL_GPU_SHADERFORMAT_SPIRV,
-    #else
-        SDL_GPU_SHADERFORMAT_SPIRV,
-    #endif
-        true, NULL
-    );
+    gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
 
     SDL_ClaimWindowForGPUDevice(gpu_device, sdl_window);
 }

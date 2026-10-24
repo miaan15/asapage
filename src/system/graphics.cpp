@@ -529,10 +529,10 @@ i32 graphics_load_model(const char *path) {
     f32 *normals_data_buf  = (f32*)malloc(normals_data_buf_size);
     i32 *indices_data_buf  = (i32*)malloc(indices_data_buf_size);
 
-    i32 curr_vert = 0;
-    i32 curr_norm = 0;
-    i32 curr_idx  = 0;
-    i32 base_vert_offset = 0;
+    i32 vertices_idx_offset = 0;
+    i32 normals_idx_offset = 0;
+    i32 indices_idx_offset  = 0;
+    i32 base_vertex_offset = 0;
 
     for (i32 i = 0; i < model_data->meshes_count; i++) {
         cgltf_mesh *mesh = &model_data->meshes[i];
@@ -547,14 +547,14 @@ i32 graphics_load_model(const char *path) {
                     break;
                 }
             }
-            i32 prim_vert_num = vertices_accessor ? (i32)vertices_accessor->count : 0;
-            for (i32 k = 0; k < prim_vert_num; k++) {
+            i32 vertices_num = vertices_accessor ? (i32)vertices_accessor->count : 0;
+            for (i32 k = 0; k < vertices_num; k++) {
                 f32 temp[3];
                 cgltf_accessor_read_float(vertices_accessor, k, temp, 3);
-                vertices_data_buf[(curr_vert + k) * 4 + 0] = temp[0];
-                vertices_data_buf[(curr_vert + k) * 4 + 1] = temp[1];
-                vertices_data_buf[(curr_vert + k) * 4 + 2] = temp[2];
-                vertices_data_buf[(curr_vert + k) * 4 + 3] = 1.0f;
+                vertices_data_buf[(vertices_idx_offset + k) * 4 + 0] = temp[0];
+                vertices_data_buf[(vertices_idx_offset + k) * 4 + 1] = temp[1];
+                vertices_data_buf[(vertices_idx_offset + k) * 4 + 2] = temp[2];
+                vertices_data_buf[(vertices_idx_offset + k) * 4 + 3] = 1;
             }
 
             // normals
@@ -565,30 +565,31 @@ i32 graphics_load_model(const char *path) {
                     break;
                 }
             }
-            i32 prim_norm_num = normals_accessor ? (i32)normals_accessor->count : 0;
-            for (i32 k = 0; k < prim_norm_num; k++) {
+            i32 normals_num = normals_accessor ? (i32)normals_accessor->count : 0;
+            for (i32 k = 0; k < normals_num; k++) {
                 f32 temp[3];
                 cgltf_accessor_read_float(normals_accessor, k, temp, 3);
-                normals_data_buf[(curr_norm + k) * 4 + 0] = temp[0];
-                normals_data_buf[(curr_norm + k) * 4 + 1] = temp[1];
-                normals_data_buf[(curr_norm + k) * 4 + 2] = temp[2];
-                normals_data_buf[(curr_norm + k) * 4 + 3] = 0.0f;
+                normals_data_buf[(normals_idx_offset + k) * 4 + 0] = temp[0];
+                normals_data_buf[(normals_idx_offset + k) * 4 + 1] = temp[1];
+                normals_data_buf[(normals_idx_offset + k) * 4 + 2] = temp[2];
+                normals_data_buf[(normals_idx_offset + k) * 4 + 3] = 0;
             }
 
             // indices
             cgltf_accessor *indices_accessor = primitive->indices;
-            i32 prim_idx_num = indices_accessor ? (i32)indices_accessor->count : 0;
+            i32 indices_num = indices_accessor ? (i32)indices_accessor->count : 0;
             if (indices_accessor != nullptr) {
-                cgltf_accessor_unpack_indices(indices_accessor, &indices_data_buf[curr_idx], sizeof(i32), prim_idx_num);
-                for (i32 k = 0; k < prim_idx_num; k++) {
-                    indices_data_buf[curr_idx + k] += base_vert_offset;
+                cgltf_accessor_unpack_indices(indices_accessor, &indices_data_buf[indices_idx_offset], sizeof(i32), indices_num);
+                for (i32 k = 0; k < indices_num; k++) {
+                    indices_data_buf[indices_idx_offset + k] += base_vertex_offset;
                 }
             }
 
-            curr_vert += prim_vert_num;
-            curr_norm += prim_norm_num;
-            curr_idx  += prim_idx_num;
-            base_vert_offset += prim_vert_num;
+            vertices_idx_offset += vertices_num;
+            normals_idx_offset += normals_num;
+            indices_idx_offset  += indices_num;
+
+            base_vertex_offset += vertices_num;
         }
     }
 
