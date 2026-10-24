@@ -19,46 +19,47 @@ import pool;
 
 export namespace asapage {
 
-struct GraphicsPerIntanceAccessor {
+struct alignas(16) GraphicsPerIntanceAccessor {
     u32 model_idx;
     u32 transform_idx;
     u32 color_idx;
 };
 
-struct GraphicsPerVertexAccessor {
+struct alignas(16) GraphicsPerVertexAccessor {
 };
 
-struct GraphicsModelHeader {
+struct alignas(16) GraphicsModelHeader {
     u32 vertices_offset;
     u32 normals_offset;
     u32 indices_offset;
 };
 
 struct alignas(16) GraphicsTransform {
-    f32 position[3];
+    Vec3 position;
     f32 __padding_0;
-    f32 rotation[4];
-    f32 scale[3];
+    Vec4 rotation;
+    Vec3 scale;
     f32 __padding_1;
 };
 
 struct alignas(16) GraphicsColor {
-    f32 color[3];
+    Vec3 color;
+    f32 __padding_0;
 };
 
 struct alignas(16) GraphicsView {
-    f32 size[2];
-    f32 range[2];
-    f32 eye[3];
+    Vec2 size;
+    Vec2 range;
+    Vec3 eye;
     f32 __padding_0;
-    f32 center[3];
+    Vec3 center;
     f32 __padding_1;
-    f32 up[3];
+    Vec3 up;
     f32 fov;
 };
 
 struct alignas(16) GraphicsEnv {
-    f32 light_pos[3];
+    Vec3 light_pos;
     f32 light_intensity;
 };
 
@@ -158,19 +159,8 @@ void graphics_sys_init() {
 
     { // pipeline
         // shaders
-        SDL_GPUShader *vertex_shader; {
-            char path[256] = "default_shader.vert";
-            file_to_asset_path(path, sizeof(path));
-
-            vertex_shader = create_shader_glsl_file(path, SHADER_STAGE::VERTEX, 0, 0, GRAPHICS_VERTEX_SHADER_BUF_NUM, 0);
-        };
-
-        SDL_GPUShader *fragment_shader; {
-            char path[256] = "default_shader.frag";
-            file_to_asset_path(path, sizeof(path));
-
-            fragment_shader = create_shader_glsl_file(path, SHADER_STAGE::FRAGMENT, 0, 0, GRAPHICS_FRAGMENT_SHADER_BUF_NUM, 0);
-        };
+        SDL_GPUShader *vertex_shader = shader_load("shader_vertex.hlsl", SHADER_STAGE::VERTEX, 0, 0, GRAPHICS_VERTEX_SHADER_BUF_NUM, 0);
+        SDL_GPUShader *fragment_shader = shader_load("shader_fragment.hlsl", SHADER_STAGE::FRAGMENT, 0, 0, GRAPHICS_FRAGMENT_SHADER_BUF_NUM, 0);
 
         //
         SDL_GPUGraphicsPipelineCreateInfo pipeline_cinfo = {};
@@ -310,11 +300,11 @@ bool graphics_draw() {
     i32 object_idx = 0;
     GraphicsObject *object = nullptr;
     while (pool_iterate(&graphics_sys.graphics_object_pool, &object_idx, &object, true)) {
-        mem_copy(transform_ptr[object_idx].position, &object->position, sizeof(Vec3));
-        mem_copy(transform_ptr[object_idx].rotation, &object->rotation, sizeof(Quat));
-        mem_copy(transform_ptr[object_idx].scale, &object->scale, sizeof(Vec3));
+        transform_ptr[object_idx].position = object->position;
+        transform_ptr[object_idx].rotation = object->rotation;
+        transform_ptr[object_idx].scale = object->scale;
 
-        mem_copy(color_ptr[object_idx].color, &object->color, sizeof(Vec3));
+        color_ptr[object_idx].color = object->color;
 
         if (!pool_is_alive(&graphics_sys.graphics_object_pool, object)) { continue; }
 
@@ -386,7 +376,7 @@ bool graphics_draw() {
             SDL_GPUColorTargetInfo color_target_info = {
                 .texture = swapchain_texture,
                 .load_op = SDL_GPU_LOADOP_CLEAR,
-                .store_op = SDL_GPU_STOREOP_DONT_CARE
+                .store_op = SDL_GPU_STOREOP_STORE
             };
             SDL_GPUDepthStencilTargetInfo depth_target_info = {
                 .texture = graphics_sys.depth_texture,
@@ -523,15 +513,15 @@ i32 graphics_load_model(const char *path) {
 
     i32 vertices_data_buf_size = 4 * total_vertices_num * sizeof(f32);
     i32 normals_data_buf_size  = 4 * total_normals_num * sizeof(f32);
-    i32 indices_data_buf_size  = total_indices_num * sizeof(i32);
+    i32 indices_data_buf_size  = 4 * total_indices_num * sizeof(i32);
 
     f32 *vertices_data_buf = (f32*)malloc(vertices_data_buf_size);
     f32 *normals_data_buf  = (f32*)malloc(normals_data_buf_size);
     i32 *indices_data_buf  = (i32*)malloc(indices_data_buf_size);
 
-    i32 curr_vert = 0;
-    i32 curr_norm = 0;
-    i32 curr_idx  = 0;
+    i32 vertices_idx_offset = 0;
+    i32 normals_idx_offset = 0;
+    i32 indices_idx_offset  = 0;
     i32 base_vert_offset = 0;
 
     for (i32 i = 0; i < model_data->meshes_count; i++) {
@@ -547,14 +537,17 @@ i32 graphics_load_model(const char *path) {
                     break;
                 }
             }
-            i32 prim_vert_num = vertices_accessor ? (i32)vertices_accessor->count : 0;
-            for (i32 k = 0; k < prim_vert_num; k++) {
-                f32 temp[3];
-                cgltf_accessor_read_float(vertices_accessor, k, temp, 3);
-                vertices_data_buf[(curr_vert + k) * 4 + 0] = temp[0];
-                vertices_data_buf[(curr_vert + k) * 4 + 1] = temp[1];
-                vertices_data_buf[(curr_vert + k) * 4 + 2] = temp[2];
-                vertices_data_buf[(curr_vert + k) * 4 + 3] = 1.0f;
+
+            if (vertices_accessor) {
+                u32 vertices_num = vertices_accessor->count;
+                for (u32 v = 0; v < vertices_num; v++) {
+                    f32 pos[3] = {0.0f, 0.0f, 0.0f};
+                    cgltf_accessor_read_float(vertices_accessor, v, pos, 3);
+                    vertices_data_buf[vertices_idx_offset + 0] = pos[0];
+                    vertices_data_buf[vertices_idx_offset + 1] = pos[1];
+                    vertices_data_buf[vertices_idx_offset + 2] = pos[2];
+                    vertices_idx_offset += 4;
+                }
             }
 
             // normals
@@ -565,30 +558,35 @@ i32 graphics_load_model(const char *path) {
                     break;
                 }
             }
-            i32 prim_norm_num = normals_accessor ? (i32)normals_accessor->count : 0;
-            for (i32 k = 0; k < prim_norm_num; k++) {
-                f32 temp[3];
-                cgltf_accessor_read_float(normals_accessor, k, temp, 3);
-                normals_data_buf[(curr_norm + k) * 4 + 0] = temp[0];
-                normals_data_buf[(curr_norm + k) * 4 + 1] = temp[1];
-                normals_data_buf[(curr_norm + k) * 4 + 2] = temp[2];
-                normals_data_buf[(curr_norm + k) * 4 + 3] = 0.0f;
+
+            if (normals_accessor) {
+                u32 normals_num = normals_accessor->count;
+                for (u32 n = 0; n < normals_num; n++) {
+                    f32 norm[3] = {0.0f, 0.0f, 0.0f};
+                    cgltf_accessor_read_float(normals_accessor, n, norm, 3);
+                    normals_data_buf[normals_idx_offset + 0] = norm[0];
+                    normals_data_buf[normals_idx_offset + 1] = norm[1];
+                    normals_data_buf[normals_idx_offset + 2] = norm[2];
+                    normals_idx_offset += 4;
+                }
             }
 
             // indices
             cgltf_accessor *indices_accessor = primitive->indices;
-            i32 prim_idx_num = indices_accessor ? (i32)indices_accessor->count : 0;
-            if (indices_accessor != nullptr) {
-                cgltf_accessor_unpack_indices(indices_accessor, &indices_data_buf[curr_idx], sizeof(i32), prim_idx_num);
-                for (i32 k = 0; k < prim_idx_num; k++) {
-                    indices_data_buf[curr_idx + k] += base_vert_offset;
-                }
-            }
+            if (indices_accessor) {
+                u32 indices_num = indices_accessor->count;
+                cgltf_accessor_unpack_indices(indices_accessor, &indices_data_buf[indices_idx_offset], sizeof(i32), indices_num);
 
-            curr_vert += prim_vert_num;
-            curr_norm += prim_norm_num;
-            curr_idx  += prim_idx_num;
-            base_vert_offset += prim_vert_num;
+                for (u32 idx_i = 0; idx_i < indices_num; idx_i++) {
+                    cgltf_size raw_idx = cgltf_accessor_read_index(indices_accessor, idx_i);
+
+                    indices_data_buf[indices_idx_offset] = raw_idx + base_vert_offset;
+
+                    indices_idx_offset += 4;
+                }
+
+                base_vert_offset += (vertices_accessor ? vertices_accessor->count : 0);
+            }
         }
     }
 
@@ -598,9 +596,9 @@ i32 graphics_load_model(const char *path) {
 
     // model header
     GraphicsModelHeader model_header = {
-        .vertices_offset = (u32)(graphics_sys.vertices_buf_offset / (4 * sizeof(f32))),
-        .normals_offset  = (u32)(graphics_sys.normals_buf_offset / (4 * sizeof(f32))),
-        .indices_offset  = (u32)(graphics_sys.indices_buf_offset / sizeof(i32))
+        .vertices_offset = (u32)(graphics_sys.vertices_buf_offset / 16),
+        .normals_offset  = (u32)(graphics_sys.normals_buf_offset / 16),
+        .indices_offset  = (u32)(graphics_sys.indices_buf_offset / 16)
     };
 
     graphics_handle_upload_to_buf(graphics_sys.model_header_buf, model_idx * sizeof(GraphicsModelHeader), &model_header, sizeof(GraphicsModelHeader));
