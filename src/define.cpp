@@ -24,6 +24,3 @@ export using usize = std::size_t;
 export using isize = std::ptrdiff_t;
 export using uptr  = std::uintptr_t;
 export using iptr  = std::intptr_t;
-
-export struct string_ref { char *ptr; size_t len; };
-export string_ref make_string_ref(const char *str) { return string_ref { (char*)str, strlen(str) }; }

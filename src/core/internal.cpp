@@ -1,5 +1,6 @@
 module;
 
+#include "SDL3/SDL_gpu.h"
 #include <SDL3/SDL.h>
 
 export module internal;
@@ -8,6 +9,20 @@ import define;
 import mem;
 
 export namespace asapage {
+
+enum {
+    PLATFORM_UNKNOWN, PLATFORM_WINDOWS, PLATFORM_LINUX, PLATFORM_MACOS,
+};
+
+#if defined(_WIN32) || defined(_WIN64)
+    #define PLATFORM PLATFORM_WINDOWS
+#elif defined(__APPLE__) && defined(__MACH__)
+    #define PLATFORM PLATFORM_MACOS
+#elif defined(__linux__)
+    #define PLATFORM PLATFORM_LINUX
+#else
+    #define PLATFORM PLATFORM_UNKNOWN
+#endif
 
 constexpr usize OMNI_ARENA_SIZE = 1000 << 10 << 10;
 constexpr usize TICK_ARENA_SIZE = 50 << 10 << 10;
@@ -31,6 +46,8 @@ SDL_Window *sdl_window;
 SDL_GPUDevice *gpu_device;
 
 void internal_init() {
+    static_assert(PLATFORM != PLATFORM_UNKNOWN, "unknown platform");
+
     // Arena
     arena_init(&omni_arena, OMNI_ARENA_SIZE);
 
@@ -51,7 +68,16 @@ void internal_init() {
 
     sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
 
-    gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
+    gpu_device = SDL_CreateGPUDevice(
+    #if PLATFORM == WINDOWS
+        SDL_GPU_SHADERFORMAT_DXIL,
+    #elif PLATFORM == MACOS
+        SDL_GPU_SHADERFORMAT_SPIRV,
+    #else
+        SDL_GPU_SHADERFORMAT_SPIRV,
+    #endif
+        true, NULL
+    );
 
     SDL_ClaimWindowForGPUDevice(gpu_device, sdl_window);
 }

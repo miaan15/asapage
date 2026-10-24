@@ -1,5 +1,7 @@
 build/
 vendor/_out/
 
-.cache/
+cache/
 
+.cache/
+.vscode/

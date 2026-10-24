@@ -19,20 +19,13 @@ constexpr char FILE_SEPARATOR = '/';
 char dir_project_raw[512];
 char dir_source_raw[512];
 char dir_asset_raw[512];
-
-string_ref dir_project;
-string_ref dir_source;
-string_ref dir_asset;
+char dir_cache_raw[512];
 
 void file_sys_init() {
     sprintf(dir_project_raw, "%s", _PROJECT_DIR);
-    dir_project = make_string_ref(dir_project_raw);
-
     sprintf(dir_source_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "src");
-    dir_source = make_string_ref(dir_source_raw);
-
     sprintf(dir_asset_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "asset");
-    dir_asset = make_string_ref(dir_asset_raw);
+    sprintf(dir_cache_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "cache");
 }
 
 size_t file_to_native_path(char *path) {
@@ -116,6 +109,9 @@ void file_to_source_path(char *path, size_t path_size_cap = 0) {
 }
 void file_to_asset_path(char *path, size_t path_size_cap = 0) {
     file_prepend_path(path, dir_asset_raw, path_size_cap);
+}
+void file_to_cache_path(char *path, size_t path_size_cap = 0) {
+    file_prepend_path(path, dir_cache_raw, path_size_cap);
 }
 
 }
