@@ -35,30 +35,31 @@ struct GraphicsModelHeader {
 };
 
 struct alignas(16) GraphicsTransform {
-    f32 position[3];
+    Vec3 position;
     f32 __padding_0;
-    f32 rotation[4];
-    f32 scale[3];
+    Quat rotation;
+    Vec3 scale;
     f32 __padding_1;
 };
 
 struct alignas(16) GraphicsColor {
-    f32 color[3];
+    Vec3 color;
 };
 
 struct alignas(16) GraphicsView {
-    f32 size[2];
-    f32 range[2];
-    f32 eye[3];
+
+    Vec2 size;
+    Vec2 range;
+    Vec3 eye;
     f32 __padding_0;
-    f32 center[3];
+    Vec3 center;
     f32 __padding_1;
-    f32 up[3];
+    Vec3 up;
     f32 fov;
 };
 
 struct alignas(16) GraphicsEnv {
-    f32 light_pos[3];
+    Vec3 light_pos;
     f32 light_intensity;
 };
 
@@ -298,33 +299,33 @@ bool graphics_draw() {
     auto *view_ptr         = (GraphicsView*)SDL_MapGPUTransferBuffer(gpu_device, view_transfer_buf, false);
     auto *env_ptr          = (GraphicsEnv*)SDL_MapGPUTransferBuffer(gpu_device, env_transfer_buf, false);
 
-    i32 object_idx = 0;
-    GraphicsObject *object = nullptr;
-    while (pool_iterate(&graphics_sys.graphics_object_pool, &object_idx, &object, true)) {
-        mem_copy(transform_ptr[object_idx].position, &object->position, sizeof(Vec3));
-        mem_copy(transform_ptr[object_idx].rotation, &object->rotation, sizeof(Quat));
-        mem_copy(transform_ptr[object_idx].scale, &object->scale, sizeof(Vec3));
+    for (i32 object_idx = 1; object_idx < graphics_sys.graphics_object_pool.max_idx; object_idx++) {
+        GraphicsObject object = graphics_sys.graphics_object_pool.data_buf[object_idx];
 
-        mem_copy(color_ptr[object_idx].color, &object->color, sizeof(Vec3));
+        transform_ptr[object_idx].position = object.position;
+        transform_ptr[object_idx].rotation = object.rotation;
+        transform_ptr[object_idx].scale = object.scale;
 
-        if (!pool_is_alive(&graphics_sys.graphics_object_pool, object)) { continue; }
+        color_ptr[object_idx].color = object.color;
+
+        if (object.idx == 0) { continue; }
 
         i32 draw_idx = graphics_sys.draw_call_data_len;
 
         graphics_sys.draw_call_data_buf[draw_idx] = (GraphicsDrawCallData) {
-            .model_idx = object->model_idx
+            .model_idx = object.model_idx
         };
 
         per_instance_ptr[draw_idx] = (GraphicsPerIntanceAccessor) {
-            .model_idx = (u32)object->model_idx,
+            .model_idx = (u32)object.model_idx,
             .transform_idx = (u32)object_idx,
             .color_idx = (u32)object_idx
         };
 
         graphics_sys.draw_call_data_len++;
     }
-    mem_copy(view_ptr, &graphics_sys.view, sizeof(GraphicsView));
-    mem_copy(env_ptr, &graphics_sys.env, sizeof(GraphicsEnv));
+    *view_ptr = graphics_sys.view;
+    *env_ptr = graphics_sys.env;
 
     SDL_UnmapGPUTransferBuffer(gpu_device, per_instance_transfer_buf);
     SDL_UnmapGPUTransferBuffer(gpu_device, per_vertex_transfer_buf);
@@ -356,10 +357,6 @@ bool graphics_draw() {
     SDL_ReleaseGPUTransferBuffer(gpu_device, color_transfer_buf);
     SDL_ReleaseGPUTransferBuffer(gpu_device, view_transfer_buf);
     SDL_ReleaseGPUTransferBuffer(gpu_device, env_transfer_buf);
-
-    if (graphics_sys.graphics_object_pool.len <= 0) {
-        return true;
-    }
 
     // draw command
     SDL_GPUCommandBuffer* command_buf = SDL_AcquireGPUCommandBuffer(gpu_device); {

@@ -88,12 +88,10 @@ int main() {
         if (input_is_key_on(SCANCODE::LEFT)) { object_monkey->position.x -= .1; }
         if (input_is_key_on(SCANCODE::RIGHT)) { object_monkey->position.x += .1; }
 
-        Vec3 new_eye_pos = mat4_rotation(quat_normalize((Quat) { 0, math_sin(eye_rotation_y / 2), 0, -math_cos(eye_rotation_y / 2) })) * VEC3_BACK * eye_distance;
-        new_eye_pos.y += 3;
-        mem_copy(graphics_sys.view.eye, &new_eye_pos, sizeof(Vec3));
+        graphics_sys.view.eye = mat4_rotation(quat_normalize((Quat) { 0, math_sin(eye_rotation_y / 2), 0, -math_cos(eye_rotation_y / 2) })) * VEC3_BACK * eye_distance;
+        graphics_sys.view.eye.y += 3;
 
-        Vec3 new_light_pos = mat4_rotation(quat_normalize((Quat) { math_sin(light_rotation_x / 2), 0, 0, -math_cos(light_rotation_x / 2) }))  * VEC3_BACK * light_distance;
-        mem_copy(graphics_sys.env.light_pos, &new_light_pos, sizeof(Vec3));
+        graphics_sys.env.light_pos = mat4_rotation(quat_normalize((Quat) { math_sin(light_rotation_x / 2), 0, 0, -math_cos(light_rotation_x / 2) }))  * VEC3_BACK * light_distance;
 
         graphics_draw();
     }
