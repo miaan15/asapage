@@ -66,7 +66,7 @@ void internal_init() {
     // SDL
     SDL_Init(SDL_INIT_VIDEO);
 
-    sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
+    sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
 
     gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
 

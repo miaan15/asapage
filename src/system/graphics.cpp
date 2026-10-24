@@ -158,19 +158,8 @@ void graphics_sys_init() {
 
     { // pipeline
         // shaders
-        SDL_GPUShader *vertex_shader; {
-            char path[256] = "default_shader.vert";
-            file_to_asset_path(path, sizeof(path));
-
-            vertex_shader = create_shader_glsl_file(path, SHADER_STAGE::VERTEX, 0, 0, GRAPHICS_VERTEX_SHADER_BUF_NUM, 0);
-        };
-
-        SDL_GPUShader *fragment_shader; {
-            char path[256] = "default_shader.frag";
-            file_to_asset_path(path, sizeof(path));
-
-            fragment_shader = create_shader_glsl_file(path, SHADER_STAGE::FRAGMENT, 0, 0, GRAPHICS_FRAGMENT_SHADER_BUF_NUM, 0);
-        };
+        SDL_GPUShader *vertex_shader = shader_load("default_shader.vert", true, SHADER_STAGE::VERTEX, 0, 0, GRAPHICS_VERTEX_SHADER_BUF_NUM, 0);
+        SDL_GPUShader *fragment_shader = shader_load("default_shader.frag", true, SHADER_STAGE::FRAGMENT, 0, 0, GRAPHICS_FRAGMENT_SHADER_BUF_NUM, 0);
 
         //
         SDL_GPUGraphicsPipelineCreateInfo pipeline_cinfo = {};
@@ -260,6 +249,8 @@ void graphics_sys_destroy() {
 }
 
 bool graphics_draw() {
+    graphics_sys.draw_call_data_len = 0;
+
     u32 per_instance_size = GRAPHICS_MAX_OBJECT_NUM * sizeof(GraphicsPerIntanceAccessor);
     u32 per_vertex_size = 3 * GRAPHICS_MAX_OBJECT_NUM * sizeof(GraphicsPerVertexAccessor);
     u32 transform_transfer_size = GRAPHICS_MAX_OBJECT_NUM * sizeof(GraphicsTransform);
@@ -386,7 +377,7 @@ bool graphics_draw() {
             SDL_GPUColorTargetInfo color_target_info = {
                 .texture = swapchain_texture,
                 .load_op = SDL_GPU_LOADOP_CLEAR,
-                .store_op = SDL_GPU_STOREOP_DONT_CARE
+                .store_op = SDL_GPU_STOREOP_STORE
             };
             SDL_GPUDepthStencilTargetInfo depth_target_info = {
                 .texture = graphics_sys.depth_texture,
