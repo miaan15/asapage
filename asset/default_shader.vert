@@ -3,53 +3,58 @@
 // per instance
 struct PerInstanceAccessor {
     uint model_idx;
-    uint transform_idx;
-    uint color_idx;
+    uint object_idx;
 };
-layout(set = 0, binding = 0) readonly buffer PerInstanceAccessorBuf {
-    PerInstanceAccessor instance_accessors[];
+layout(std430, set = 0, binding = 0) readonly buffer PerInstanceAccessorBuf {
+    PerInstanceAccessor instance_accessor_buf[];
 };
 
 // per vertex
 struct PerVertexAccessor {
     uint placeholder;
 };
-layout(set = 0, binding = 1) readonly buffer PerVertexAccessorBuf {
-    PerVertexAccessor vertex_accessors[];
+layout(std430, set = 0, binding = 1) readonly buffer PerVertexAccessorBuf {
+    PerVertexAccessor vertex_accessor_buf[];
 };
 
 // model
-struct ModelHeader {
-    uint vertices_offset;
-    uint normals_offset;
-    uint indices_offset;
+struct ModelAccessor {
+    uint vertex_offset;
+    uint index_offset;
 };
-layout(set = 0, binding = 2) readonly buffer ModelHeaderBuf {
-    ModelHeader model_headers[];
-};
-
-layout(set = 0, binding = 3) readonly buffer ModelVertexBuf {
-    vec3 model_vertices[];
-};
-layout(set = 0, binding = 4) readonly buffer ModelNormalBuf {
-    vec3 model_normals[];
-};
-layout(set = 0, binding = 5) readonly buffer ModelIndexBuf {
-    uint model_indices[];
+layout(std430, set = 0, binding = 2) readonly buffer ModelAccessorBuf {
+    ModelAccessor model_accessor_buf[];
 };
 
+// actual model data
+struct ModelVertex {
+    vec3 pos;
+    vec3 normal;
+    vec2 uv;
+};
+layout(std430, set = 0, binding = 3) readonly buffer ModelVertexBuf {
+    ModelVertex model_vertex_buf[];
+};
+
+layout(std430, set = 0, binding = 4) readonly buffer ModelIndexBuf {
+    uint model_index_buf[];
+};
+
+// object
 // transform
-struct Transform {
-    vec3 position;
-    vec4 rotation;
-    vec3 scale;
-};
-layout(set = 0, binding = 6) readonly buffer TransformBuf {
-    Transform transforms[];
+layout(std430, set = 0, binding = 5) readonly buffer TransformBuf {
+    mat4 transform_buf[];
 };
 
-// view
-layout(set = 0, binding = 7) readonly buffer ViewBuf {
+struct ObjectData {
+    vec3 color;
+};
+layout(std430, set = 0, binding = 6) readonly buffer ObjectDataBuf {
+    ObjectData object_data_buf[];
+};
+
+// global
+layout(std430, set = 0, binding = 7) readonly buffer ViewBuf {
     vec2 view_size;
     vec2 view_range;
     vec3 view_eye;
@@ -58,9 +63,10 @@ layout(set = 0, binding = 7) readonly buffer ViewBuf {
     float view_fov;
 };
 
-layout(location = 0) flat out uint o_instance_idx;
-layout(location = 1) out vec3 o_pos;
-layout(location = 2) flat out vec3 fo_normal;
+layout(location = 0) out vec3 o_pos;
+layout(location = 1) flat out vec3 o_normal;
+layout(location = 2) out vec2 o_uv;
+layout(location = 3) out vec3 o_color;
 
 mat4 perspective_matrix(float fov, float aspect, float near, float far);
 mat4 look_at_matrix(vec3 eye, vec3 center, vec3 up);
@@ -69,33 +75,36 @@ mat4 rotation_matrix(vec4 r);
 mat4 scale_matrix(vec3 s);
 
 void main() {
-    uint model_idx = instance_accessors[gl_InstanceIndex].model_idx;
-    uint transform_idx = instance_accessors[gl_InstanceIndex].transform_idx;
+    uint model_idx = instance_accessor_buf[gl_InstanceIndex].model_idx;
+    uint object_idx = instance_accessor_buf[gl_InstanceIndex].object_idx;
 
     // model
-    ModelHeader model_header = model_headers[model_idx];
-    uint vertex_idx = model_indices[model_header.indices_offset + gl_VertexIndex];
-    vec3 vertex_pos = model_vertices[model_header.vertices_offset + vertex_idx].xyz;
-    vec3 vertex_normal = model_normals[model_header.normals_offset + vertex_idx].xyz;
+    ModelAccessor model_accessor = model_accessor_buf[model_idx];
+    uint vertex_idx = model_index_buf[model_accessor.index_offset + gl_VertexIndex];
+    ModelVertex vertex_data = model_vertex_buf[model_accessor.vertex_offset + vertex_idx];
 
-    // transform
-    vec3 position = transforms[transform_idx].position;
-    vec4 rotation = transforms[transform_idx].rotation;
-    vec3 scale = transforms[transform_idx].scale;
+    // object
+    mat4 transform = transform_buf[object_idx];
+    ObjectData object_data = object_data_buf[object_idx];
 
-    mat4 model = translation_matrix(position) * rotation_matrix(rotation) * scale_matrix(scale);
-    mat4 view = look_at_matrix(view_eye, view_center, view_up);
-    mat4 proj = perspective_matrix(view_fov, view_size.x / view_size.y, view_range.x, view_range.y);
+    //
+    mat4 view_matrix = look_at_matrix(view_eye, view_center, view_up);
+    mat4 proj_matrix = perspective_matrix(view_fov, view_size.x / view_size.y, view_range.x, view_range.y);
 
-    gl_Position = proj * view * model * vec4(vertex_pos, 1);
+    vec4 world_pos = transform * vec4(vertex_data.pos, 1.0);
 
-    o_instance_idx = gl_InstanceIndex;
+    //
+    gl_Position = proj_matrix * view_matrix * world_pos;
 
-    vec4 world_pos = model * vec4(vertex_pos, 1);
+    //
     o_pos = world_pos.xyz;
 
-    mat3 normal_matrix = mat3(rotation_matrix(rotation)) * mat3(scale_matrix(1.0 / scale));
-    fo_normal = normalize(normal_matrix * vertex_normal);
+    mat3 normal_matrix = mat3(transpose(inverse(transform)));
+    o_normal = normalize(normal_matrix * vertex_data.normal);
+
+    o_uv = vertex_data.uv;
+
+    o_color = object_data.color;
 }
 
 mat4 perspective_matrix(float fov, float aspect, float near, float far) {

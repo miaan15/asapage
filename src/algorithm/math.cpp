@@ -454,7 +454,7 @@ inline Mat4 mat4_transpose(const Mat4* m) {
     }};
 }
 
-inline Mat4 mat4_translate(Vec3 translation) {
+inline Mat4 mat4_translation(Vec3 translation) {
     Mat4 m = MAT4_IDENTITY;
     m.raw[3][0] = translation.x;
     m.raw[3][1] = translation.y;

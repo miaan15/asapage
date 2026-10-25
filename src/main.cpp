@@ -30,16 +30,16 @@ int main() {
 
     graphics_sys_init();
 
-    graphics_sys.view = (GraphicsView) {
+    graphics_sys.view = (GraphicsGPUView) {
         .size = { (f32)screen_width, (f32)screen_height },
         .range = { 0.1, 100 },
-        .eye = { 0, 2, 5 },
+        .eye = { 0, 15, 10 },
         .center = { 0, 0, 0 },
         .up = { 0, 1, 0 },
         .fov = 60 * MATH_DEG_TO_RAD
     };
 
-    graphics_sys.env = (GraphicsEnv) {
+    graphics_sys.env = (GraphicsGPUEnv) {
         .light_pos = { 5, 10, 5 },
         .light_intensity = 1
     };
@@ -51,8 +51,8 @@ int main() {
     object_box->model_idx = box_model_idx;
     object_box->color = { 1, 0, 0 };
     object_box->position = { -1.5, 0, 0 };
-    object_box->rotation = { 0, 0, 0, 1 };
-    object_box->scale = { 1, 1, 1 };
+    object_box->rotation = { 0.71, 0, 0, 0.71 };
+    object_box->scale = { 1, 2, 1 };
 
     GraphicsObject *object_monkey = graphics_create_object();
     object_monkey->model_idx = monkey_model_idx;
@@ -70,6 +70,8 @@ int main() {
 
     bool app_running = true;
     while (app_running) {
+        internal_frame_update();
+
         input_pre_poll();
 
         SDL_Event event;
@@ -89,7 +91,7 @@ int main() {
         if (input_is_key_on(SCANCODE::RIGHT)) { object_monkey->position.x += .1; }
 
         graphics_sys.view.eye = mat4_rotation(quat_normalize((Quat) { 0, math_sin(eye_rotation_y / 2), 0, -math_cos(eye_rotation_y / 2) })) * VEC3_BACK * eye_distance;
-        graphics_sys.view.eye.y += 3;
+        graphics_sys.view.eye.y += 10;
 
         graphics_sys.env.light_pos = mat4_rotation(quat_normalize((Quat) { math_sin(light_rotation_x / 2), 0, 0, -math_cos(light_rotation_x / 2) }))  * VEC3_BACK * light_distance;
 

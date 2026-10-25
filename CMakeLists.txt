@@ -12,6 +12,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# options
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+
 # lib
 function(build_vendor_lib lib_name)
     get_filename_component(VENDOR_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/${lib_name}" ABSOLUTE)
@@ -98,6 +101,16 @@ target_sources(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     _PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+if(ENABLE_ASAN)
+    if(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE /fsanitize=address /experimental:module-)
+        target_link_options(${PROJECT_NAME} PRIVATE /fsanitize=address)
+    else()
+        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+    endif()
+endif()
 
 # include
 target_include_directories(${PROJECT_NAME} PRIVATE

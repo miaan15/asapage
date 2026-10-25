@@ -138,7 +138,7 @@ void arena_init_over_arena(Arena *a, Arena *base_a, usize cap) {
 
     base_a->buf_head_offset = offset + cap;
 
-    void *base_ptr = (char*)a->buf + offset;
+    void *base_ptr = (char*)base_a->buf + offset;
 
     a->buf = base_ptr;
     a->cap = cap;

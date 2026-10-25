@@ -2,6 +2,7 @@ module;
 
 #include "SDL3/SDL_gpu.h"
 #include <SDL3/SDL.h>
+#include <cstdio>
 
 export module internal;
 
@@ -24,9 +25,9 @@ enum {
     #define PLATFORM PLATFORM_UNKNOWN
 #endif
 
-constexpr usize OMNI_ARENA_SIZE = 1000 << 10 << 10;
-constexpr usize TICK_ARENA_SIZE = 50 << 10 << 10;
-constexpr usize FRAME_ARENA_SIZE = 50 << 10 << 10;
+constexpr usize OMNI_ARENA_SIZE = 500 << 20;
+constexpr usize TICK_ARENA_SIZE = 100 << 20;
+constexpr usize FRAME_ARENA_SIZE = 100 << 20;
 
 // Arena
 Arena omni_arena;
@@ -66,11 +67,17 @@ void internal_init() {
     // SDL
     SDL_Init(SDL_INIT_VIDEO);
 
-    sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
+    sdl_window = SDL_CreateWindow("", 1280, 720, SDL_WINDOW_RESIZABLE);
 
     gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
 
     SDL_ClaimWindowForGPUDevice(gpu_device, sdl_window);
+}
+
+void internal_frame_update() {
+    frame_arena_cur_idx = 1 - frame_arena_cur_idx;
+    frame_arena_ptr = &frame_arena_buf[frame_arena_cur_idx];
+    arena_reset(frame_arena_ptr);
 }
 
 }
