@@ -75,7 +75,7 @@ template <typename T> i32 mapstr_calc_probe_num(MapStr<T> *mapstr, i32 from_idx,
 
 template <typename T> T *mapstr_create(MapStr<T> *mapstr, const char *key, T *instance_data = nullptr) {
     if (mapstr->len >= mapstr->cap) {
-        log_debug("MAP TOO MUCHCHDSA");
+        log_debug("mapstr_create: create too much -> stub");
         return mapstr_stub(mapstr);
     }
 

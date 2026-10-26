@@ -27,27 +27,26 @@ export using iptr  = std::intptr_t;
 
 export namespace asapage {
 
-enum class PLATFORM {
+enum struct PLATFORM {
     UNKNOWN,
     WINDOWS,
     LINUX,
     MACOS
 };
 
-enum class BUILD_TYPE {
+enum struct BUILD_TYPE {
     DEBUG,
     RELEASE
 };
 
-constexpr PLATFORM PLATFORM =
 #if defined(_WIN32) || defined(_WIN64)
-    PLATFORM::WINDOWS;
+constexpr PLATFORM PLATFORM = PLATFORM::WINDOWS;
 #elif defined(__APPLE__) && defined(__MACH__)
-    PLATFORM::MACOS;
+constexpr PLATFORM PLATFORM = PLATFORM::MACOS;
 #elif defined(__linux__)
-    PLATFORM::LINUX;
+constexpr PLATFORM PLATFORM = PLATFORM::LINUX;
 #else
-    PLATFORM::UNKNOWN;
+constexpr PLATFORM PLATFORM = PLATFORM::UNKNOWN;
 #endif
 
 #if defined(_DEBUG) || !defined(NDEBUG)

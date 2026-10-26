@@ -30,8 +30,6 @@ Arena *omni_arena_ptr;
 Arena *tick_arena_ptr;
 Arena *frame_arena_ptr;
 
-i32 internal_mem_index(void *ptr) { return (char*)ptr - (char*)omni_arena_ptr->buf; }
-
 // time
 f32 time_cur, time_delta;
 
@@ -127,5 +125,7 @@ bool internal_on_tick() {
     }
     return res;
 }
+
+i32 internal_mem_offset(void *ptr) { return (char*)ptr - (char*)omni_arena_ptr->buf; }
 
 }

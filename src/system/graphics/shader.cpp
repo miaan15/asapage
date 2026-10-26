@@ -68,13 +68,13 @@ SDL_GPUShader *graphics_shader_load(const char *path, bool use_cache, SHADER_STA
 
         int compile_res = system(command);
         if (compile_res != 0) {
-            log_debug("glslc compilation failed: %s", command);
+            log_err("graphics_shader_load: glslc compilation failed: command = [%s]", command);
             return nullptr;
         }
 
         spirv_code_buf = SDL_LoadFile(cache_shader_path, &spirv_code_len);
         if (spirv_code_buf == nullptr) {
-            log_debug("failed to load cached shader: %s", cache_shader_path);
+            log_err("graphics_shader_load: failed to load cached shader: command = [%s]", cache_shader_path);
             return nullptr;
         }
     }

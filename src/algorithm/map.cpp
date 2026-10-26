@@ -1,7 +1,5 @@
 module;
 
-#include <cstdio>
-
 export module map;
 
 import define;
@@ -52,7 +50,7 @@ template <typename T> i32 map_calc_probe_num(Map<T> *map, i32 from_idx, i32 to_i
 
 template <typename T> T *map_create(Map<T> *map, u64 key, T *instance_data = nullptr) {
     if (map->len >= map->cap) {
-        log_debug("MAP TOO MUCHCHDSA");
+        log_err("map_create: create too much -> stub");
         return map_stub(map);
     }
 

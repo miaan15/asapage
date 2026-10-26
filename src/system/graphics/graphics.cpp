@@ -523,12 +523,14 @@ GraphicsObject *graphics_create_object(GraphicsObject *object = nullptr) {
     auto *res = pool_create(&graphics_sys.graphics_object_pool, object);
     res->rotation = { 0, 0, 0, 1 };
     res->scale = { 1, 1, 1 };
-    log_debug("Created graphics object [%d]", pool_idx())
+    log_debug("Created graphics object [%d]", pool_index(&graphics_sys.graphics_object_pool, res));
     return res;
 }
 
 bool graphics_destroy_object(GraphicsObject *object) {
-    return pool_destroy(&graphics_sys.graphics_object_pool, object);
+    bool destroyed = pool_destroy(&graphics_sys.graphics_object_pool, object);
+    if (destroyed) { log_debug("Destroy graphics object [%d]", pool_index(&graphics_sys.graphics_object_pool, object)); }
+    return destroyed;
 }
 
 i32 graphics_load_model(const char *path) {

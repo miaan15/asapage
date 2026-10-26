@@ -1,6 +1,5 @@
 module;
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -114,7 +113,7 @@ void arena_destroy(Arena *a) {
 void *arena_alloc(Arena *a, usize size, usize align = MEM_MAX_ALIGN) {
     usize offset = mem_align_up(a->buf_head_offset, align);
     if (offset + size > a->cap) {
-        log_debug("ERROR NO MORE SPACE ARENA");
+        log_err("arena_alloc: alloc too much -> null");
         return nullptr;
     }
 

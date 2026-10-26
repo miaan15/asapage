@@ -40,7 +40,7 @@ template <typename T> T *pool_stub(Pool<T> *pool) { return &pool->data_buf[0]; }
 
 template <typename T> T *pool_create(Pool<T> *pool, T *instance_data = nullptr, i32 *r_validation = nullptr) {
     if (pool->len + 1 >= pool->cap) {
-        log_err("pool_create: too many instances ()")
+        log_err("pool_create: create too much");
         return pool_stub(pool);
     }
 
