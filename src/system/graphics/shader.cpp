@@ -1,3 +1,6 @@
+// graphics_shader
+// just load shader now
+
 module;
 
 #include <cstdio>
@@ -6,7 +9,7 @@ module;
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_iostream.h>
 
-export module shader;
+export module graphics_shader;
 
 import define;
 import mem;
@@ -24,9 +27,9 @@ enum struct SHADER_COMPILE_OPTIMIZATION {
     NONE, SIZE, SPEED,
 };
 
-SDL_GPUShader *shader_load(const char *path, bool use_cache, SHADER_STAGE stage,
-                           u32 sampler_num, u32 storage_texture_num, u32 storage_buf_num, u32 uniform_buf_num,
-                           SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION::SPEED) {
+SDL_GPUShader *graphics_shader_load(const char *path, bool use_cache, SHADER_STAGE stage,
+                                    u32 sampler_num, u32 storage_texture_num, u32 storage_buf_num, u32 uniform_buf_num,
+                                    SHADER_COMPILE_OPTIMIZATION optimization = SHADER_COMPILE_OPTIMIZATION::SPEED) {
     char asset_path[512];
     strcpy(asset_path, path);
     file_to_asset_path(asset_path, 512);

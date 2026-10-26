@@ -2,7 +2,7 @@
 
 // per instance
 struct PerInstanceAccessor {
-    uint model_idx;
+    uint model_accessor_idx;
     uint object_idx;
 };
 layout(std430, set = 0, binding = 0) readonly buffer PerInstanceAccessorBuf {
@@ -75,11 +75,11 @@ mat4 rotation_matrix(vec4 r);
 mat4 scale_matrix(vec3 s);
 
 void main() {
-    uint model_idx = instance_accessor_buf[gl_InstanceIndex].model_idx;
+    uint model_accessor_idx = instance_accessor_buf[gl_InstanceIndex].model_accessor_idx;
     uint object_idx = instance_accessor_buf[gl_InstanceIndex].object_idx;
 
     // model
-    ModelAccessor model_accessor = model_accessor_buf[model_idx];
+    ModelAccessor model_accessor = model_accessor_buf[model_accessor_idx];
     uint vertex_idx = model_index_buf[model_accessor.index_offset + gl_VertexIndex];
     ModelVertex vertex_data = model_vertex_buf[model_accessor.vertex_offset + vertex_idx];
 

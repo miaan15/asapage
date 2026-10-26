@@ -1,8 +1,9 @@
 // graphics system
-// using bindless appoarch
+// using bindless appoarch, so that there're mostly just some static storage buffer that any shader can read on
+// the shader will use gl_InstanceIndex or gl_VertexIndex to reference the actual render data
 //
-// currently this is handling all: rendering, load model, handle render object lifetime, maybe I will separate in some more files later
-// currently it only have 1 basic, non-custom pipeline
+// there'll be called 'Accessor' which should store the index that can be use on actual data buffer
+// e.g: PerInstanceAccessor::model_idx: per_instance_accessor_buf[gl_InstanceIndex].model_idx to take out the model accessor idx
 
 module;
 
@@ -20,17 +21,19 @@ import internal;
 import context;
 import math;
 import file;
-import shader;
 import pool;
+
+export import graphics_shader;
+export import graphics_texture;
 
 export namespace asapage {
 
 // all these structs are supposed to be direct map to GPU RAM struct (glsl std430)
 
 struct GraphicsGPUPerInstanceAccessor {
-// uint model_idx;
+// uint model_accessor_idx;
 // uint object_idx;
-    u32 model_idx;
+    u32 model_accessor_idx;
     u32 object_idx;
 };
 
@@ -91,11 +94,11 @@ constexpr i32 GRAPHICS_FRAGMENT_SHADER_SAMPLER_NUM = 0;
 constexpr i32 GRAPHICS_FRAGMENT_SHADER_BUF_NUM = 2;
 
 // FIXME idk, maybe move these to some global config
-constexpr i32 GRAPHICS_MAX_OBJECT_NUM = 1e4; // 10k
+constexpr i32 GRAPHICS_MAX_OBJECT_NUM = 1e5; // 100k
 constexpr i32 GRAPHICS_MAX_MODEL_NUM = 100;
 
-constexpr i32 GRAPHICS_VERTICES_BUF_SIZE = 50 << 20; // 1MB
-constexpr i32 GRAPHICS_INDICES_BUF_SIZE = 50 << 20; // 1MB
+constexpr i32 GRAPHICS_VERTICES_BUF_SIZE = 500 << 20; // 500MB
+constexpr i32 GRAPHICS_INDICES_BUF_SIZE = 200 << 20; // 200MB
 
 // normal CPU structs
 
@@ -182,7 +185,7 @@ inline GraphicsSys graphics_sys = {};
 
 void graphics_sys_init() {
     graphics_sys.screen_format = SDL_GetGPUSwapchainTextureFormat(gpu_device, sdl_window);
-    graphics_sys.depth_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+    graphics_sys.depth_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
 
     { // depth_texture
         SDL_GPUTextureCreateInfo texture_cinfo = {
@@ -199,10 +202,16 @@ void graphics_sys_init() {
 
     { // pipeline
         // shaders
-        SDL_GPUShader *vertex_shader = shader_load("default_shader.vert", false, SHADER_STAGE::VERTEX,
-                                                   0, 0, GRAPHICS_VERTEX_SHADER_BUF_NUM, 0);
-        SDL_GPUShader *fragment_shader = shader_load("default_shader.frag", false, SHADER_STAGE::FRAGMENT,
-                                                     GRAPHICS_FRAGMENT_SHADER_SAMPLER_NUM, 0, GRAPHICS_FRAGMENT_SHADER_BUF_NUM, 0);
+        SDL_GPUShader *vertex_shader = graphics_shader_load("default_shader.vert", false, SHADER_STAGE::VERTEX,
+                                                            0,
+                                                            0,
+                                                            GRAPHICS_VERTEX_SHADER_BUF_NUM,
+                                                            0);
+        SDL_GPUShader *fragment_shader = graphics_shader_load("default_shader.frag", false, SHADER_STAGE::FRAGMENT,
+                                                              GRAPHICS_FRAGMENT_SHADER_SAMPLER_NUM,
+                                                              0,
+                                                              GRAPHICS_FRAGMENT_SHADER_BUF_NUM,
+                                                              0);
 
         // create info
         SDL_GPUGraphicsPipelineCreateInfo pipeline_cinfo = {};
@@ -297,7 +306,7 @@ void graphics_sys_init() {
 }
 
 void graphics_sys_destroy() {
-SDL_ReleaseGPUTexture(gpu_device, graphics_sys.depth_texture);
+    SDL_ReleaseGPUTexture(gpu_device, graphics_sys.depth_texture);
     SDL_ReleaseGPUGraphicsPipeline(gpu_device, graphics_sys.pipeline);
 
     SDL_ReleaseGPUBuffer(gpu_device, graphics_sys.per_instance_accessor_buf);
@@ -352,7 +361,7 @@ bool graphics_draw() {
         };
         auto *transfer_buf = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_buf_cinfo);
 
-        char *transfer_map_ptr = (char*)SDL_MapGPUTransferBuffer(gpu_device, transfer_buf, false);
+        char *transfer_map_ptr = (char*)SDL_MapGPUTransferBuffer(gpu_device, transfer_buf, true);
 
         auto *per_instance_map_ptr =
             (GraphicsGPUPerInstanceAccessor*)(transfer_map_ptr + per_instance_accessor_transfer_offset);
@@ -381,7 +390,7 @@ bool graphics_draw() {
             object_data_map_ptr[object_idx] = object_data;
 
             GraphicsGPUPerInstanceAccessor per_instance = {
-                .model_idx = (u32)object.model_idx,
+                .model_accessor_idx = (u32)object.model_idx,
                 .object_idx = (u32)object_idx,
             };
             per_instance_map_ptr[draw_call_num] = per_instance;
@@ -412,32 +421,32 @@ bool graphics_draw() {
         src_location.offset = per_instance_accessor_transfer_offset;
         dest_region.buffer = graphics_sys.per_instance_accessor_buf;
         dest_region.size = graphics_sys.per_instance_accessor_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         src_location.offset = per_vertex_accessor_transfer_offset;
         dest_region.buffer = graphics_sys.per_vertex_accessor_buf;
         dest_region.size = graphics_sys.per_vertex_accessor_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         src_location.offset = transform_transfer_offset;
         dest_region.buffer = graphics_sys.transform_buf;
         dest_region.size = graphics_sys.transform_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         src_location.offset = object_data_transfer_offset;
         dest_region.buffer = graphics_sys.object_data_buf;
         dest_region.size = graphics_sys.object_data_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         src_location.offset = view_transfer_offset;
         dest_region.buffer = graphics_sys.view_buf;
         dest_region.size = graphics_sys.view_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         src_location.offset = env_transfer_offset;
         dest_region.buffer = graphics_sys.env_buf;
         dest_region.size = graphics_sys.env_buf_cap;
-        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, false);
+        SDL_UploadToGPUBuffer(copy_pass, &src_location, &dest_region, true);
 
         SDL_EndGPUCopyPass(copy_pass);
         SDL_SubmitGPUCommandBuffer(command_buf);
@@ -511,7 +520,10 @@ bool graphics_draw() {
 }
 
 GraphicsObject *graphics_create_object(GraphicsObject *object = nullptr) {
-    return pool_create(&graphics_sys.graphics_object_pool, object);
+    auto *res = pool_create(&graphics_sys.graphics_object_pool, object);
+    res->rotation = { 0, 0, 0, 1 };
+    res->scale = { 1, 1, 1 };
+    return res;
 }
 
 bool graphics_destroy_object(GraphicsObject *object) {
@@ -728,6 +740,8 @@ i32 graphics_load_model(const char *path) {
         .indices_num = total_index_num,
     };
     graphics_sys.model_meta_list_len++;
+
+    printf("loaded model [%d]: path = [%s]; vertex_num = [%d]; triangle_num = [%d]\n", model_idx, true_path, total_vertex_num, total_index_num / 3);
 
     return model_idx;
 }

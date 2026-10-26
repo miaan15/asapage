@@ -2,6 +2,7 @@ build/
 vendor/_out/
 
 cache/
+asset/test/
 
 .cache/
 .vscode/

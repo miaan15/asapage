@@ -193,7 +193,7 @@ bool input_is_key_up_cache(SCANCODE scancode) {
 }
 
 // call this before SDL_PollEvent
-void input_pre_poll() {
+void input_pre_poll_update() {
     // update cache_keyboard_state
     for (i32 i = 0; i < input_sys.numkeys; i++) {
         bool cur_state = input_sys.cur_keyboard_state[i];
@@ -203,9 +203,9 @@ void input_pre_poll() {
         bool is_up = !cur_state && last_state;
         bool is_on = cur_state;
 
-        input_sys.cache_keyboard_state[i] |= (is_down << 0) |
-                                             (is_up   << 1) |
-                                             (is_on   << 2);
+        input_sys.cache_keyboard_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
+                                             (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
+                                             (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
     }
 
     // update last_keyboard_state

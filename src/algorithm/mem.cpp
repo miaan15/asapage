@@ -104,6 +104,12 @@ void arena_init(Arena *a, usize cap) {
     a->buf_head_offset = 0;
 }
 
+void arena_destroy(Arena *a) {
+    free(a->buf);
+    a->buf = nullptr;
+    a->cap = a->buf_head_offset = 0;
+}
+
 void *arena_alloc(Arena *a, usize size, usize align = MEM_MAX_ALIGN) {
     usize offset = mem_align_up(a->buf_head_offset, align);
     if (offset + size > a->cap) {
