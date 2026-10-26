@@ -15,6 +15,7 @@ import define;
 import mem;
 import internal;
 import file;
+import log;
 
 export namespace asapage {
 
@@ -67,13 +68,13 @@ SDL_GPUShader *graphics_shader_load(const char *path, bool use_cache, SHADER_STA
 
         int compile_res = system(command);
         if (compile_res != 0) {
-            printf("glslc compilation failed: %s\n", command);
+            log_debug("glslc compilation failed: %s", command);
             return nullptr;
         }
 
         spirv_code_buf = SDL_LoadFile(cache_shader_path, &spirv_code_len);
         if (spirv_code_buf == nullptr) {
-            printf("failed to load cached shader: %s\n", cache_shader_path);
+            log_debug("failed to load cached shader: %s", cache_shader_path);
             return nullptr;
         }
     }

@@ -11,20 +11,6 @@ import mem;
 
 export namespace asapage {
 
-enum {
-    PLATFORM_UNKNOWN, PLATFORM_WINDOWS, PLATFORM_LINUX, PLATFORM_MACOS,
-};
-
-#if defined(_WIN32) || defined(_WIN64)
-    #define PLATFORM PLATFORM_WINDOWS
-#elif defined(__APPLE__) && defined(__MACH__)
-    #define PLATFORM PLATFORM_MACOS
-#elif defined(__linux__)
-    #define PLATFORM PLATFORM_LINUX
-#else
-    #define PLATFORM PLATFORM_UNKNOWN
-#endif
-
 // config
 constexpr i32 TPS = 20;
 constexpr usize OMNI_ARENA_SIZE = 500 << 20; // 500 MB
@@ -44,6 +30,8 @@ Arena *omni_arena_ptr;
 Arena *tick_arena_ptr;
 Arena *frame_arena_ptr;
 
+i32 internal_mem_index(void *ptr) { return (char*)ptr - (char*)omni_arena_ptr->buf; }
+
 // time
 f32 time_cur, time_delta;
 
@@ -62,8 +50,6 @@ SDL_GPUDevice *gpu_device;
 i32 screen_width, screen_height;
 
 void internal_init() {
-    static_assert(PLATFORM != PLATFORM_UNKNOWN, "unknown platform");
-
     // arena
     arena_init(&omni_arena, OMNI_ARENA_SIZE);
 

@@ -9,6 +9,7 @@ export module mapstr;
 import define;
 import mem;
 import pool;
+import log;
 
 export namespace asapage {
 
@@ -74,7 +75,7 @@ template <typename T> i32 mapstr_calc_probe_num(MapStr<T> *mapstr, i32 from_idx,
 
 template <typename T> T *mapstr_create(MapStr<T> *mapstr, const char *key, T *instance_data = nullptr) {
     if (mapstr->len >= mapstr->cap) {
-        printf("MAP TOO MUCHCHDSA");
+        log_debug("MAP TOO MUCHCHDSA");
         return mapstr_stub(mapstr);
     }
 

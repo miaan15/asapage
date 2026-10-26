@@ -1,12 +1,12 @@
 module;
 
 #include <climits>
-#include <cstdio>
 
 export module pool;
 
 import define;
 import mem;
+import log;
 
 export namespace asapage {
 
@@ -40,7 +40,7 @@ template <typename T> T *pool_stub(Pool<T> *pool) { return &pool->data_buf[0]; }
 
 template <typename T> T *pool_create(Pool<T> *pool, T *instance_data = nullptr, i32 *r_validation = nullptr) {
     if (pool->len + 1 >= pool->cap) {
-        printf("POOL TOO MUCH");
+        log_err("pool_create: too many instances ()")
         return pool_stub(pool);
     }
 
@@ -73,6 +73,10 @@ template <typename T> T *pool_create(Pool<T> *pool, T *instance_data = nullptr, 
     if (r_validation != nullptr) { *r_validation = pool->validation_buf[target_idx]; }
 
     return (T*)data_ptr;
+}
+
+template <typename T> i32 pool_index(Pool<T> *pool, T *instance) {
+    return instance - pool->data_buf;
 }
 
 template <typename T> bool pool_is_alive(Pool<T> *pool, T *instance, i32 validation = -1) {

@@ -7,6 +7,7 @@ export module file;
 
 import define;
 import mem;
+import log;
 
 export namespace asapage {
 
@@ -62,7 +63,7 @@ void file_concat_path(char *dest, const char *src, size_t dest_size_cap = 0) { /
 
     size_t out_len = native_dest_len + native_src_len + 1; // +1 separator
     if (dest_size_cap > 0 && dest_size_cap < out_len + 1) { // +1 terminate
-        printf("file_concat(): error fking out of bounds");
+        log_err("file_concat_path: concat out of bounds: [%s] + [%s] is greater than [%d]", dest, src, dest_size_cap);
         return;
     }
 
@@ -85,7 +86,7 @@ void file_prepend_path(char *dest, const char *src, size_t dest_size_cap = 0) { 
 
     size_t out_len = native_src_len + native_dest_len + 1; // +1 separator
     if (dest_size_cap > 0 && dest_size_cap < out_len + 1) { // +1 terminate
-        printf("file_prepend(): error fking out of bounds");
+        log_err("file_prepend_path: concat out of bounds: [%s] + [%s] is greater than [%d]", src, dest, dest_size_cap);
         return;
     }
 

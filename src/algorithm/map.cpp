@@ -6,6 +6,7 @@ export module map;
 
 import define;
 import mem;
+import log;
 
 export namespace asapage {
 
@@ -51,7 +52,7 @@ template <typename T> i32 map_calc_probe_num(Map<T> *map, i32 from_idx, i32 to_i
 
 template <typename T> T *map_create(Map<T> *map, u64 key, T *instance_data = nullptr) {
     if (map->len >= map->cap) {
-        printf("MAP TOO MUCHCHDSA");
+        log_debug("MAP TOO MUCHCHDSA");
         return map_stub(map);
     }
 

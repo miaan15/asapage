@@ -7,6 +7,7 @@ module;
 export module mem;
 
 import define;
+import log;
 
 export namespace asapage {
 
@@ -113,7 +114,7 @@ void arena_destroy(Arena *a) {
 void *arena_alloc(Arena *a, usize size, usize align = MEM_MAX_ALIGN) {
     usize offset = mem_align_up(a->buf_head_offset, align);
     if (offset + size > a->cap) {
-        printf("ERROR NO MORE SPACE ARENA");
+        log_debug("ERROR NO MORE SPACE ARENA");
         return nullptr;
     }
 
@@ -138,7 +139,7 @@ void arena_init_over(Arena *a, void *base_ptr, usize cap) {
 void arena_init_over_arena(Arena *a, Arena *base_a, usize cap) {
     usize offset = mem_align_up(base_a->buf_head_offset, MEM_MAX_ALIGN);
     if (offset + cap > base_a->cap) {
-        printf("ERROR NO MORE SPACE ARENA");
+        log_debug("ERROR NO MORE SPACE ARENA");
         return;
     }
 

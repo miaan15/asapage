@@ -24,3 +24,38 @@ export using usize = std::size_t;
 export using isize = std::ptrdiff_t;
 export using uptr  = std::uintptr_t;
 export using iptr  = std::intptr_t;
+
+export namespace asapage {
+
+enum class PLATFORM {
+    UNKNOWN,
+    WINDOWS,
+    LINUX,
+    MACOS
+};
+
+enum class BUILD_TYPE {
+    DEBUG,
+    RELEASE
+};
+
+constexpr PLATFORM PLATFORM =
+#if defined(_WIN32) || defined(_WIN64)
+    PLATFORM::WINDOWS;
+#elif defined(__APPLE__) && defined(__MACH__)
+    PLATFORM::MACOS;
+#elif defined(__linux__)
+    PLATFORM::LINUX;
+#else
+    PLATFORM::UNKNOWN;
+#endif
+
+#if defined(_DEBUG) || !defined(NDEBUG)
+constexpr BUILD_TYPE BUILD_TYPE = BUILD_TYPE::DEBUG;
+constexpr bool IS_DEBUG = true;
+#else
+constexpr BUILD_TYPE BUILD_TYPE = BUILD_TYPE::RELEASE;
+constexpr bool IS_DEBUG = false;
+#endif
+
+}

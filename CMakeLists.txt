@@ -123,3 +123,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SDL3::SDL3
     SDL3_image::SDL3_image
 )
+
+if (WIN32)
+    target_link_libraries(asapage PRIVATE dbghelp)
+endif()

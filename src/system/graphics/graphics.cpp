@@ -8,7 +8,6 @@
 module;
 
 #include <cstddef>
-#include <cstdio>
 #include <cstdlib>
 #include <SDL3/SDL_gpu.h>
 #include <cgltf/cgltf.h>
@@ -22,6 +21,7 @@ import context;
 import math;
 import file;
 import pool;
+import log;
 
 export import graphics_shader;
 export import graphics_texture;
@@ -523,6 +523,7 @@ GraphicsObject *graphics_create_object(GraphicsObject *object = nullptr) {
     auto *res = pool_create(&graphics_sys.graphics_object_pool, object);
     res->rotation = { 0, 0, 0, 1 };
     res->scale = { 1, 1, 1 };
+    log_debug("Created graphics object [%d]", pool_idx())
     return res;
 }
 
@@ -539,11 +540,11 @@ i32 graphics_load_model(const char *path) {
     cgltf_data *model_data = nullptr;
 
     if (cgltf_parse_file(&load_model_options, true_path, &model_data) != cgltf_result_success) {
-        printf("failed to parse model: path = [%s]\n", true_path);
+        log_err("graphics_load_model: failed to parse model: path = [%s]", true_path);
         return -1;
     }
     if (cgltf_load_buffers(&load_model_options, model_data, true_path) != cgltf_result_success) {
-        printf("failed to load model buffer: path = [%s]\n", true_path);
+        log_err("graphics_load_model: failed to load model buffer: path = [%s]", true_path);
         cgltf_free(model_data);
         return -1;
     }
@@ -741,7 +742,7 @@ i32 graphics_load_model(const char *path) {
     };
     graphics_sys.model_meta_list_len++;
 
-    printf("loaded model [%d]: path = [%s]; vertex_num = [%d]; triangle_num = [%d]\n", model_idx, true_path, total_vertex_num, total_index_num / 3);
+    log_debug("Loaded model [%d]: path = [%s]; vertex_num = [%d]; triangle_num = [%d]", model_idx, true_path, total_vertex_num, total_index_num / 3);
 
     return model_idx;
 }
