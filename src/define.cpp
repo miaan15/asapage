@@ -3,6 +3,8 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <string>
+#include <string_view>
 
 export module define;
 
@@ -24,6 +26,9 @@ export using usize = std::size_t;
 export using isize = std::ptrdiff_t;
 export using uptr  = std::uintptr_t;
 export using iptr  = std::intptr_t;
+
+export using string = std::string;
+export using string_view = std::string_view;
 
 export namespace asapage {
 

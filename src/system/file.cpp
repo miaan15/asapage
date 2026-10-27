@@ -1,7 +1,7 @@
 module;
 
-#include <cstdio>
-#include <cstring>
+#include "SDL3/SDL_iostream.h"
+#include <SDL3/SDL_filesystem.h>
 
 export module file;
 
@@ -17,102 +17,141 @@ constexpr char FILE_SEPARATOR = '\\';
 constexpr char FILE_SEPARATOR = '/';
 #endif
 
-char dir_project_raw[512];
-char dir_source_raw[512];
-char dir_asset_raw[512];
-char dir_cache_raw[512];
+inline string project_dir;
+inline string source_dir;
+inline string asset_dir;
+inline string cache_dir;
+
+string file_native_path(string_view path) {
+    string result(path);
+    if (result.empty()) {
+        return result;
+    }
+
+    for (char &c : result) {
+        if (c == '/' || c == '\\') {
+            c = FILE_SEPARATOR;
+        }
+    }
+
+    while (result.length() > 1 && result.back() == FILE_SEPARATOR) {
+        result.pop_back();
+    }
+
+    return result;
+}
+
+string file_concat_path(string_view dest, string_view src) {
+    string native_dest = file_native_path(dest);
+    string native_src = file_native_path(src);
+
+    if (native_dest.empty()) return native_src;
+    if (native_src.empty()) return native_dest;
+
+    string result;
+    result.reserve(native_dest.size() + 1 + native_src.size());
+    result += native_dest;
+    result += FILE_SEPARATOR;
+    result += native_src;
+    return result;
+}
+
+string file_prepend_path(string_view dest, string_view src) {
+    return file_concat_path(src, dest);
+}
 
 void file_sys_init() {
-    sprintf(dir_project_raw, "%s", _PROJECT_DIR);
-    sprintf(dir_source_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "src");
-    sprintf(dir_asset_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "asset");
-    sprintf(dir_cache_raw, "%s%c%s", _PROJECT_DIR, FILE_SEPARATOR, "cache");
+    project_dir = _PROJECT_DIR;
+    source_dir = file_concat_path(project_dir, "src");
+    asset_dir  = file_concat_path(project_dir, "asset");
+    cache_dir  = file_concat_path(project_dir, "cache");
 }
 
-size_t file_to_native_path(char *path) {
-    size_t path_len = strlen(path);
-    if (path_len == 0) { return 0; }
-    for (size_t i = 0; i < path_len; i++) {
-        path[i] = ((path[i] == '/') | (path[i] == '\\')) ? FILE_SEPARATOR : path[i];
+string file_project_path(string_view path) { return file_concat_path(project_dir, path); }
+string file_source_path(string_view path)  { return file_concat_path(source_dir, path); }
+string file_asset_path(string_view path)   { return file_concat_path(asset_dir, path); }
+string file_cache_path(string_view path)   { return file_concat_path(cache_dir, path); }
+
+string_view file_extension(string_view path) {
+    i32 dot_pos = path.find_last_of('.');
+    i32 separator_pos = path.find_last_of("/\\");
+
+    if (dot_pos == string_view::npos || (separator_pos != string_view::npos && dot_pos < separator_pos)) {
+        return {};
     }
-    while (path_len > 1 && path[path_len - 1] == FILE_SEPARATOR) {
-        path[path_len - 1] = '\0';
-        path_len--;
+    return path.substr(dot_pos);
+}
+
+string_view file_name(string_view path) {
+    i32 separator_pos = path.find_last_of("/\\");
+    if (separator_pos == string_view::npos) return path;
+    return path.substr(separator_pos + 1);
+}
+
+string_view file_dir(string_view path) {
+    i32 separator_pos = path.find_last_of("/\\");
+    if (separator_pos == string_view::npos) return {};
+    return path.substr(0, separator_pos);
+}
+
+string_view file_stem(string_view path) {
+    string_view filename = file_name(path);
+    i32 dot_pos = filename.find_last_of('.');
+    if (dot_pos == string_view::npos) return filename;
+    return filename.substr(0, dot_pos);
+}
+
+bool file_exists(string_view path) {
+    SDL_PathInfo info;
+    string native = file_native_path(path);
+    return SDL_GetPathInfo(native.c_str(), &info);
+}
+
+bool file_is_dir(string_view path) {
+    SDL_PathInfo info;
+    string native = file_native_path(path);
+    if (SDL_GetPathInfo(native.c_str(), &info)) { return info.type == SDL_PATHTYPE_DIRECTORY; }
+    return false;
+}
+
+i64 file_size(string_view path) {
+    SDL_PathInfo info;
+    string native = file_native_path(path);
+    if (SDL_GetPathInfo(native.c_str(), &info)) { return info.size; }
+    return 0;
+}
+
+bool file_make_dir(string_view path) {
+    string native = file_native_path(path);
+    bool ok = SDL_CreateDirectory(native.c_str());
+    if (!ok) {
+        log_err("file_make_dir [%s]: %s", native.c_str(), SDL_GetError());
     }
-    return path_len;
+    return ok;
 }
 
-#if defined(__clang__)
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wvla-cxx-extension"
-    #pragma clang diagnostic ignored "-Wvla"
-#elif defined(__GNUC__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wvla"
-#endif
+bool file_make_file(string_view path) {
+    string native = file_native_path(path);
 
-void file_concat_path(char *dest, const char *src, size_t dest_size_cap = 0) { // dest_size_cap > 0 => turn on bounds check
-    // size_t dest_len = strlen(dest);
-    size_t src_len = strlen(src);
-
-    size_t native_dest_len = file_to_native_path(dest);
-
-    char native_src[src_len + 1];
-    mem_copy(native_src, src, src_len + 1);
-    size_t native_src_len = file_to_native_path(native_src);
-
-    size_t out_len = native_dest_len + native_src_len + 1; // +1 separator
-    if (dest_size_cap > 0 && dest_size_cap < out_len + 1) { // +1 terminate
-        log_err("file_concat_path: concat out of bounds: [%s] + [%s] is greater than [%d]", dest, src, dest_size_cap);
-        return;
+    string_view parent = file_dir(native);
+    if (!parent.empty() && !file_exists(parent)) {
+        file_make_dir(parent);
     }
 
-    dest[native_dest_len] = FILE_SEPARATOR;
-    mem_copy(dest + native_dest_len + 1, native_src, native_src_len);
-    dest[out_len] = '\0';
-}
-
-void file_prepend_path(char *dest, const char *src, size_t dest_size_cap = 0) { // dest_size_cap > 0 => turn on bounds check
-    size_t dest_len = strlen(dest);
-    size_t src_len = strlen(src);
-
-    char native_dest[dest_len + 1];
-    mem_copy(native_dest, dest, dest_len + 1);
-    size_t native_dest_len = file_to_native_path(native_dest);
-
-    char native_src[src_len + 1];
-    mem_copy(native_src, src, src_len + 1);
-    size_t native_src_len = file_to_native_path(native_src);
-
-    size_t out_len = native_src_len + native_dest_len + 1; // +1 separator
-    if (dest_size_cap > 0 && dest_size_cap < out_len + 1) { // +1 terminate
-        log_err("file_prepend_path: concat out of bounds: [%s] + [%s] is greater than [%d]", src, dest, dest_size_cap);
-        return;
+    bool ok = SDL_SaveFile(native.c_str(), "", 0);
+    if (!ok) {
+        log_err("file_make_file [%s]: %s", native.c_str(), SDL_GetError());
     }
-
-    mem_copy(dest, native_src, native_src_len);
-    dest[native_src_len] = FILE_SEPARATOR;
-    mem_copy(dest + native_src_len + 1, native_dest, native_dest_len);
-    dest[out_len] = '\0';
+    return ok;
 }
 
-#if defined(__clang__)
-    #pragma clang diagnostic pop
-#elif defined(__GNUC__)
-    #pragma GCC diagnostic pop
-#endif
-
-void file_to_project_path(char *path, size_t path_size_cap = 0) {
-    file_prepend_path(path, dir_project_raw, path_size_cap);
-}
-void file_to_source_path(char *path, size_t path_size_cap = 0) {
-    file_prepend_path(path, dir_source_raw, path_size_cap);
-}
-void file_to_asset_path(char *path, size_t path_size_cap = 0) {
-    file_prepend_path(path, dir_asset_raw, path_size_cap);
-}
-void file_to_cache_path(char *path, size_t path_size_cap = 0) {
-    file_prepend_path(path, dir_cache_raw, path_size_cap);
+bool file_remove(string_view path) {
+    string native = file_native_path(path);
+    bool ok = SDL_RemovePath(native.c_str());
+    if (!ok) {
+        log_err("file_remove [%s]: %s", native.c_str(), SDL_GetError());
+    }
+    return ok;
 }
 
 }
