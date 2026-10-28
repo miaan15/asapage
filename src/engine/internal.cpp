@@ -1,6 +1,6 @@
 module;
 
-#include <SDL3/SDL.h>
+#include <raylib.h>
 
 export module internal;
 
@@ -32,10 +32,6 @@ f32 time_realtime_cur, time_realtime_delta;
 f32 time_realtime_last_frame;
 
 f32 interpolate_alpha;
-
-// SDL
-SDL_Window *sdl_window;
-SDL_GLContext gl_context;
 
 // screen
 i32 screen_width, screen_height;
