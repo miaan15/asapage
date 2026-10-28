@@ -1,7 +1,7 @@
 module;
 
-#include "SDL3/SDL_iostream.h"
-#include <SDL3/SDL_filesystem.h>
+#include <cstdio>
+#include <raylib.h>
 
 export module file;
 
@@ -23,7 +23,7 @@ inline string asset_dir;
 inline string cache_dir;
 
 string file_native_path(string_view path) {
-    string result(path);
+    string result { path };
     if (result.empty()) {
         return result;
     }
@@ -62,9 +62,9 @@ string file_prepend_path(string_view dest, string_view src) {
 
 void file_sys_init() {
     project_dir = _PROJECT_DIR;
-    source_dir = file_concat_path(project_dir, "src");
-    asset_dir  = file_concat_path(project_dir, "asset");
-    cache_dir  = file_concat_path(project_dir, "cache");
+    source_dir  = file_concat_path(project_dir, "src");
+    asset_dir   = file_concat_path(project_dir, "asset");
+    cache_dir   = file_concat_path(project_dir, "cache");
 }
 
 string file_project_path(string_view path) { return file_concat_path(project_dir, path); }
@@ -101,55 +101,53 @@ string_view file_stem(string_view path) {
     return filename.substr(0, dot_pos);
 }
 
-bool file_exists(string_view path) {
-    SDL_PathInfo info;
+bool file_exists_file(string_view path) {
     string native = file_native_path(path);
-    return SDL_GetPathInfo(native.c_str(), &info);
+    return FileExists(native.c_str());
 }
 
-bool file_is_dir(string_view path) {
-    SDL_PathInfo info;
+bool file_exists_dir(string_view path) {
     string native = file_native_path(path);
-    if (SDL_GetPathInfo(native.c_str(), &info)) { return info.type == SDL_PATHTYPE_DIRECTORY; }
-    return false;
+    return DirectoryExists(native.c_str());
 }
 
 i64 file_size(string_view path) {
-    SDL_PathInfo info;
     string native = file_native_path(path);
-    if (SDL_GetPathInfo(native.c_str(), &info)) { return info.size; }
-    return 0;
+    if (!FileExists(native.c_str())) return 0;
+    return GetFileLength(native.c_str());
 }
 
 bool file_make_dir(string_view path) {
     string native = file_native_path(path);
-    bool ok = SDL_CreateDirectory(native.c_str());
-    if (!ok) {
-        log_err("file_make_dir [%s]: %s", native.c_str(), SDL_GetError());
+    int res = MakeDirectory(native.c_str());
+    if (res != 0) {
+        log_err("file_make_dir [%s] failed", native.c_str());
+        return false;
     }
-    return ok;
+    return true;
 }
 
 bool file_make_file(string_view path) {
     string native = file_native_path(path);
 
     string_view parent = file_dir(native);
-    if (!parent.empty() && !file_exists(parent)) {
+    if (!parent.empty() && !file_exists_dir(parent)) {
         file_make_dir(parent);
     }
 
-    bool ok = SDL_SaveFile(native.c_str(), "", 0);
+    bool ok = SaveFileData(native.c_str(), (void*)"", 0);
     if (!ok) {
-        log_err("file_make_file [%s]: %s", native.c_str(), SDL_GetError());
+        log_err("file_make_file [%s] failed", native.c_str());
     }
     return ok;
 }
 
 bool file_remove(string_view path) {
     string native = file_native_path(path);
-    bool ok = SDL_RemovePath(native.c_str());
+
+    bool ok = (remove(native.c_str()) == 0);
     if (!ok) {
-        log_err("file_remove [%s]: %s", native.c_str(), SDL_GetError());
+        log_err("file_remove [%s] failed", native.c_str());
     }
     return ok;
 }

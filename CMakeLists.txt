@@ -16,15 +16,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 
 # lib
-function(build_vendor_lib lib_name)
+function(build_vendor_lib lib_name out_cmake_dir)
     get_filename_component(VENDOR_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/${lib_name}" ABSOLUTE)
-    get_filename_component(VENDOR_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/_out/${lib_name}" ABSOLUTE)
+    get_filename_component(VENDOR_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/_out/${lib_name}" ABSOLUTE)
+
+    set(VENDOR_BUILD_DIR "${VENDOR_OUT_DIR}/build")
+    set(VENDOR_INSTALL_DIR "${VENDOR_OUT_DIR}/install")
 
     if(NOT EXISTS "${VENDOR_BUILD_DIR}/CMakeCache.txt")
         message(STATUS "Building vendor: ${lib_name}...")
 
         file(TO_NATIVE_PATH "${VENDOR_SOURCE_DIR}" NATIVE_SOURCE_DIR)
         file(TO_NATIVE_PATH "${VENDOR_BUILD_DIR}" NATIVE_BUILD_DIR)
+        file(TO_NATIVE_PATH "${VENDOR_INSTALL_DIR}" NATIVE_INSTALL_DIR)
 
         # config
         execute_process(
@@ -32,12 +36,14 @@ function(build_vendor_lib lib_name)
                 -S "${NATIVE_SOURCE_DIR}"
                 -B "${NATIVE_BUILD_DIR}"
                 -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX="${NATIVE_INSTALL_DIR}"
                 ${ARGN}
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT
         )
 
         if(NOT CONFIG_RESULT EQUAL 0)
+            file(REMOVE_RECURSE "${VENDOR_OUT_DIR}")
             message(FATAL_ERROR "Failed to configure vendor target: ${lib_name}")
         endif()
 
@@ -49,33 +55,35 @@ function(build_vendor_lib lib_name)
         )
 
         if(NOT BUILD_RESULT EQUAL 0)
+            file(REMOVE_RECURSE "${VENDOR_OUT_DIR}")
             message(FATAL_ERROR "Failed to build vendor target: ${lib_name}")
+        endif()
+
+        # install
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} --install "${NATIVE_BUILD_DIR}" --prefix "${NATIVE_INSTALL_DIR}" --config Release
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            RESULT_VARIABLE INSTALL_RESULT
+        )
+
+        if(NOT INSTALL_RESULT EQUAL 0)
+            file(REMOVE_RECURSE "${VENDOR_OUT_DIR}")
+            message(FATAL_ERROR "Failed to install vendor target: ${lib_name}")
         endif()
     else()
         message(STATUS "OK, ${lib_name}")
     endif()
+
+    if(EXISTS "${VENDOR_INSTALL_DIR}/lib64/cmake/${lib_name}")
+        set(${out_cmake_dir} "${VENDOR_INSTALL_DIR}/lib64/cmake/${lib_name}" PARENT_SCOPE)
+    else()
+        set(${out_cmake_dir} "${VENDOR_INSTALL_DIR}/lib/cmake/${lib_name}" PARENT_SCOPE)
+    endif()
 endfunction()
 
-set(SDL3_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/_out/SDL3")
-set(SDL3_IMAGE_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/_out/SDL3_image")
-
-build_vendor_lib(SDL3
-    -DBUILD_SHARED_LIBS=OFF
-    -DSDL_TESTS=OFF
-)
-find_package(SDL3 REQUIRED CONFIG
-    PATHS "${SDL3_BUILD_DIR}"
-    NO_DEFAULT_PATH
-)
-
-build_vendor_lib(SDL3_image
-    -DBUILD_SHARED_LIBS=OFF
-    -DSDLIMAGE_TESTS=OFF
-    -DSDLIMAGE_SAMPLES=OFF
-    -DCMAKE_PREFIX_PATH=${SDL3_BUILD_DIR}
-)
-find_package(SDL3_image REQUIRED CONFIG
-    PATHS "${SDL3_IMAGE_BUILD_DIR}"
+build_vendor_lib(raylib RAYLIB_CMAKE_DIR)
+find_package(raylib REQUIRED CONFIG
+    PATHS "${RAYLIB_CMAKE_DIR}"
     NO_DEFAULT_PATH
 )
 
@@ -120,8 +128,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # link
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    SDL3::SDL3
-    SDL3_image::SDL3_image
+    raylib
 )
 
 if (WIN32)
