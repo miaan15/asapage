@@ -3,7 +3,6 @@
 layout(std140, binding = 0) uniform FrameConstant {
     mat4 view_matrix;
     mat4 projection_matrix;
-    float time;
 } frame_constant;
 
 struct InstanceData {
@@ -37,6 +36,4 @@ void main() {
     Material material = material_buf[instance.material_offset];
 
     FragColor = material.base_color;
-
-    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
 }

@@ -1,6 +1,8 @@
 module;
 
-#include <raylib.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_scancode.h>
 
 export module input;
 
@@ -11,127 +13,127 @@ import internal;
 export namespace asapage {
 
 enum struct SCANCODE {
-    NIL = KEY_NULL,
+    UNKNOWN = SDL_SCANCODE_UNKNOWN,
 
     // letters
-    A = KEY_A,
-    B = KEY_B,
-    C = KEY_C,
-    D = KEY_D,
-    E = KEY_E,
-    F = KEY_F,
-    G = KEY_G,
-    H = KEY_H,
-    I = KEY_I,
-    J = KEY_J,
-    K = KEY_K,
-    L = KEY_L,
-    M = KEY_M,
-    N = KEY_N,
-    O = KEY_O,
-    P = KEY_P,
-    Q = KEY_Q,
-    R = KEY_R,
-    S = KEY_S,
-    T = KEY_T,
-    U = KEY_U,
-    V = KEY_V,
-    W = KEY_W,
-    X = KEY_X,
-    Y = KEY_Y,
-    Z = KEY_Z,
+    A = SDL_SCANCODE_A,
+    B = SDL_SCANCODE_B,
+    C = SDL_SCANCODE_C,
+    D = SDL_SCANCODE_D,
+    E = SDL_SCANCODE_E,
+    F = SDL_SCANCODE_F,
+    G = SDL_SCANCODE_G,
+    H = SDL_SCANCODE_H,
+    I = SDL_SCANCODE_I,
+    J = SDL_SCANCODE_J,
+    K = SDL_SCANCODE_K,
+    L = SDL_SCANCODE_L,
+    M = SDL_SCANCODE_M,
+    N = SDL_SCANCODE_N,
+    O = SDL_SCANCODE_O,
+    P = SDL_SCANCODE_P,
+    Q = SDL_SCANCODE_Q,
+    R = SDL_SCANCODE_R,
+    S = SDL_SCANCODE_S,
+    T = SDL_SCANCODE_T,
+    U = SDL_SCANCODE_U,
+    V = SDL_SCANCODE_V,
+    W = SDL_SCANCODE_W,
+    X = SDL_SCANCODE_X,
+    Y = SDL_SCANCODE_Y,
+    Z = SDL_SCANCODE_Z,
 
     // number row
-    NUM_1 = KEY_ONE,
-    NUM_2 = KEY_TWO,
-    NUM_3 = KEY_THREE,
-    NUM_4 = KEY_FOUR,
-    NUM_5 = KEY_FIVE,
-    NUM_6 = KEY_SIX,
-    NUM_7 = KEY_SEVEN,
-    NUM_8 = KEY_EIGHT,
-    NUM_9 = KEY_NINE,
-    NUM_0 = KEY_ZERO,
+    NUM_1 = SDL_SCANCODE_1,
+    NUM_2 = SDL_SCANCODE_2,
+    NUM_3 = SDL_SCANCODE_3,
+    NUM_4 = SDL_SCANCODE_4,
+    NUM_5 = SDL_SCANCODE_5,
+    NUM_6 = SDL_SCANCODE_6,
+    NUM_7 = SDL_SCANCODE_7,
+    NUM_8 = SDL_SCANCODE_8,
+    NUM_9 = SDL_SCANCODE_9,
+    NUM_0 = SDL_SCANCODE_0,
 
     // control keys
-    RETURN = KEY_ENTER,
-    ESCAPE = KEY_ESCAPE,
-    BACKSPACE = KEY_BACKSPACE,
-    TAB = KEY_TAB,
-    SPACE = KEY_SPACE,
-    CAPSLOCK = KEY_CAPS_LOCK,
-    INSERT = KEY_INSERT,
-    HOME = KEY_HOME,
-    PAGEUP = KEY_PAGE_UP,
-    DELETE = KEY_DELETE,
-    END = KEY_END,
-    PAGEDOWN = KEY_PAGE_DOWN,
-    PRINTSCREEN = KEY_PRINT_SCREEN,
-    SCROLLLOCK = KEY_SCROLL_LOCK,
-    PAUSE = KEY_PAUSE,
+    RETURN = SDL_SCANCODE_RETURN,
+    ESCAPE = SDL_SCANCODE_ESCAPE,
+    BACKSPACE = SDL_SCANCODE_BACKSPACE,
+    TAB = SDL_SCANCODE_TAB,
+    SPACE = SDL_SCANCODE_SPACE,
+    CAPSLOCK = SDL_SCANCODE_CAPSLOCK,
+    INSERT = SDL_SCANCODE_INSERT,
+    HOME = SDL_SCANCODE_HOME,
+    PAGEUP = SDL_SCANCODE_PAGEUP,
+    DELETE = SDL_SCANCODE_DELETE,
+    END = SDL_SCANCODE_END,
+    PAGEDOWN = SDL_SCANCODE_PAGEDOWN,
+    PRINTSCREEN = SDL_SCANCODE_PRINTSCREEN,
+    SCROLLLOCK = SDL_SCANCODE_SCROLLLOCK,
+    PAUSE = SDL_SCANCODE_PAUSE,
 
     // arrow keys
-    RIGHT = KEY_RIGHT,
-    LEFT = KEY_LEFT,
-    DOWN = KEY_DOWN,
-    UP = KEY_UP,
+    RIGHT = SDL_SCANCODE_RIGHT,
+    LEFT = SDL_SCANCODE_LEFT,
+    DOWN = SDL_SCANCODE_DOWN,
+    UP = SDL_SCANCODE_UP,
 
     // function keys
-    F1 = KEY_F1,
-    F2 = KEY_F2,
-    F3 = KEY_F3,
-    F4 = KEY_F4,
-    F5 = KEY_F5,
-    F6 = KEY_F6,
-    F7 = KEY_F7,
-    F8 = KEY_F8,
-    F9 = KEY_F9,
-    F10 = KEY_F10,
-    F11 = KEY_F11,
-    F12 = KEY_F12,
+    F1 = SDL_SCANCODE_F1,
+    F2 = SDL_SCANCODE_F2,
+    F3 = SDL_SCANCODE_F3,
+    F4 = SDL_SCANCODE_F4,
+    F5 = SDL_SCANCODE_F5,
+    F6 = SDL_SCANCODE_F6,
+    F7 = SDL_SCANCODE_F7,
+    F8 = SDL_SCANCODE_F8,
+    F9 = SDL_SCANCODE_F9,
+    F10 = SDL_SCANCODE_F10,
+    F11 = SDL_SCANCODE_F11,
+    F12 = SDL_SCANCODE_F12,
 
     // punctuation / symbols
-    MINUS = KEY_MINUS,
-    EQUALS = KEY_EQUAL,
-    LEFTBRACKET = KEY_LEFT_BRACKET,
-    RIGHTBRACKET = KEY_RIGHT_BRACKET,
-    BACKSLASH = KEY_BACKSLASH,
-    SEMICOLON = KEY_SEMICOLON,
-    APOSTROPHE = KEY_APOSTROPHE,
-    GRAVE = KEY_GRAVE,
-    COMMA = KEY_COMMA,
-    PERIOD = KEY_PERIOD,
-    SLASH = KEY_SLASH,
+    MINUS = SDL_SCANCODE_MINUS,
+    EQUALS = SDL_SCANCODE_EQUALS,
+    LEFTBRACKET = SDL_SCANCODE_LEFTBRACKET,
+    RIGHTBRACKET = SDL_SCANCODE_RIGHTBRACKET,
+    BACKSLASH = SDL_SCANCODE_BACKSLASH,
+    SEMICOLON = SDL_SCANCODE_SEMICOLON,
+    APOSTROPHE = SDL_SCANCODE_APOSTROPHE,
+    GRAVE = SDL_SCANCODE_GRAVE,
+    COMMA = SDL_SCANCODE_COMMA,
+    PERIOD = SDL_SCANCODE_PERIOD,
+    SLASH = SDL_SCANCODE_SLASH,
 
     // numpad
-    NUMLOCKCLEAR = KEY_NUM_LOCK,
-    KP_DIVIDE = KEY_KP_DIVIDE,
-    KP_MULTIPLY = KEY_KP_MULTIPLY,
-    KP_MINUS = KEY_KP_SUBTRACT,
-    KP_PLUS = KEY_KP_ADD,
-    KP_ENTER = KEY_KP_ENTER,
-    KP_1 = KEY_KP_1,
-    KP_2 = KEY_KP_2,
-    KP_3 = KEY_KP_3,
-    KP_4 = KEY_KP_4,
-    KP_5 = KEY_KP_5,
-    KP_6 = KEY_KP_6,
-    KP_7 = KEY_KP_7,
-    KP_8 = KEY_KP_8,
-    KP_9 = KEY_KP_9,
-    KP_0 = KEY_KP_0,
-    KP_PERIOD = KEY_KP_DECIMAL,
-    KP_EQUALS = KEY_KP_EQUAL,
+    NUMLOCKCLEAR = SDL_SCANCODE_NUMLOCKCLEAR,
+    KP_DIVIDE = SDL_SCANCODE_KP_DIVIDE,
+    KP_MULTIPLY = SDL_SCANCODE_KP_MULTIPLY,
+    KP_MINUS = SDL_SCANCODE_KP_MINUS,
+    KP_PLUS = SDL_SCANCODE_KP_PLUS,
+    KP_ENTER = SDL_SCANCODE_KP_ENTER,
+    KP_1 = SDL_SCANCODE_KP_1,
+    KP_2 = SDL_SCANCODE_KP_2,
+    KP_3 = SDL_SCANCODE_KP_3,
+    KP_4 = SDL_SCANCODE_KP_4,
+    KP_5 = SDL_SCANCODE_KP_5,
+    KP_6 = SDL_SCANCODE_KP_6,
+    KP_7 = SDL_SCANCODE_KP_7,
+    KP_8 = SDL_SCANCODE_KP_8,
+    KP_9 = SDL_SCANCODE_KP_9,
+    KP_0 = SDL_SCANCODE_KP_0,
+    KP_PERIOD = SDL_SCANCODE_KP_PERIOD,
+    KP_EQUALS = SDL_SCANCODE_KP_EQUALS,
 
     // modifier keys
-    LCTRL = KEY_LEFT_CONTROL,
-    LSHIFT = KEY_LEFT_SHIFT,
-    LALT = KEY_LEFT_ALT,
-    LGUI = KEY_LEFT_SUPER,
-    RCTRL = KEY_RIGHT_CONTROL,
-    RSHIFT = KEY_RIGHT_SHIFT,
-    RALT = KEY_RIGHT_ALT,
-    RGUI = KEY_RIGHT_SUPER,
+    LCTRL = SDL_SCANCODE_LCTRL,
+    LSHIFT = SDL_SCANCODE_LSHIFT,
+    LALT = SDL_SCANCODE_LALT,
+    LGUI = SDL_SCANCODE_LGUI,
+    RCTRL = SDL_SCANCODE_RCTRL,
+    RSHIFT = SDL_SCANCODE_RSHIFT,
+    RALT = SDL_SCANCODE_RALT,
+    RGUI = SDL_SCANCODE_RGUI,
 };
 
 constexpr int INPUT_MAX_KEYBOARD_KEY_NUM = 512;
@@ -139,8 +141,9 @@ constexpr int INPUT_MAX_KEYBOARD_KEY_NUM = 512;
 // the input has "cache" mechanism
 // user's input can only be read in frame update, but usually input used for tick update (for gameplay/physics/...).
 // "cache" is when the input between 2 tick preserved until the next tick happens
-// # this was once built on SDL, but now raylib handle most of stuff, so this only has cache left
 struct InputSys {
+    const bool *cur_keyboard_state;
+    bool *last_keyboard_state;
     u8 *cache_keyboard_state; // state as bitmask: 0-down, 1-on, 2-up
     int numkeys;
 };
@@ -151,20 +154,26 @@ constexpr u8 _INPUT_CACHE_ON_STATE = 0b010;
 constexpr u8 _INPUT_CACHE_UP_STATE = 0b100;
 
 void input_sys_init() {
-    input_sys.numkeys = INPUT_MAX_KEYBOARD_KEY_NUM;
-    input_sys.cache_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys * sizeof(u8));
+    input_sys.cur_keyboard_state = SDL_GetKeyboardState(&input_sys.numkeys);
+    input_sys.last_keyboard_state = (bool*)arena_alloc(&omni_arena, input_sys.numkeys);
+    input_sys.cache_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys);
 }
 
 bool input_is_key_down(SCANCODE scancode) {
-    return IsKeyPressed((i32)scancode);
+    bool cur_state = input_sys.cur_keyboard_state[(usize)scancode];
+    bool last_state = input_sys.last_keyboard_state[(usize)scancode];
+    return cur_state && !last_state;
 }
 
 bool input_is_key_on(SCANCODE scancode) {
-    return IsKeyDown((i32)scancode);
+    bool cur_state = input_sys.cur_keyboard_state[(usize)scancode];
+    return cur_state;
 }
 
 bool input_is_key_up(SCANCODE scancode) {
-    return IsKeyReleased((i32)scancode);
+    bool cur_state = input_sys.cur_keyboard_state[(usize)scancode];
+    bool last_state = input_sys.last_keyboard_state[(usize)scancode];
+    return !cur_state && last_state;
 }
 
 bool input_is_key_down_cache(SCANCODE scancode) {
@@ -184,15 +193,24 @@ bool input_is_key_up_cache(SCANCODE scancode) {
     return ((cache_state & _INPUT_CACHE_UP_STATE) != 0) && !is_cache_key_down;
 }
 
-void input_update_cache() {
+// call this before SDL_PollEvent
+void input_update() {
+    // update cache_keyboard_state
     for (i32 i = 0; i < input_sys.numkeys; i++) {
-        bool is_down = IsKeyPressed(i);
-        bool is_up = IsKeyDown(i);
-        bool is_on = IsKeyReleased(i);
+        bool cur_state = input_sys.cur_keyboard_state[i];
+        bool last_state = input_sys.last_keyboard_state[i];
+
+        bool is_down = cur_state && !last_state;
+        bool is_up = !cur_state && last_state;
+        bool is_on = cur_state;
+
         input_sys.cache_keyboard_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
                                              (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
                                              (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
     }
+
+    // update last_keyboard_state
+    mem_copy(input_sys.last_keyboard_state, input_sys.cur_keyboard_state, input_sys.numkeys * sizeof(bool));
 }
 
 // call this after all tick update input request

@@ -1,6 +1,8 @@
 module;
 
-#include <raylib.h>
+#include <SDL3/SDL.h>
+#define GLAD_GL_IMPLEMENTATION
+#include <glad/gl.h>
 
 export module engine;
 
@@ -59,16 +61,29 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
     tick_arena_ptr = &tick_arena_buf[tick_arena_cur_idx];
     frame_arena_ptr = &frame_arena_buf[frame_arena_cur_idx];
 
-    // window
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(init_window_width, init_window_height, init_window_name);
+    // SDL
+    SDL_Init(SDL_INIT_VIDEO);
 
-    // screen
-    screen_width = GetScreenWidth();
-    screen_height = GetScreenHeight();
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+    sdl_window = SDL_CreateWindow(
+        init_window_name,
+        init_window_width,
+        init_window_height,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+    );
+
+    gl_context = SDL_GL_CreateContext(sdl_window);
+    SDL_GL_MakeCurrent(sdl_window, gl_context);
+
+    gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+
+    SDL_GetWindowSizeInPixels(sdl_window, &screen_width, &screen_height);
 
     // time
-    time_realtime_last_frame = (f32)GetTime();
+    time_realtime_last_frame = (f32)SDL_GetTicks() / 1000;
 
     file_sys_init();
 
@@ -79,7 +94,7 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
 }
 
 void engine_destroy() {
-    CloseWindow();
+    SDL_DestroyWindow(sdl_window);
     arena_destroy(&omni_arena);
 }
 
@@ -90,23 +105,30 @@ bool engine_on_frame() {
     arena_reset(frame_arena_ptr);
 
     // update time
-    time_realtime_cur = GetTime();
+    time_realtime_cur = (f32)SDL_GetTicks() / 1000;
     time_realtime_delta = time_realtime_cur - time_realtime_last_frame;
     time_realtime_last_frame = time_realtime_cur;
     tick_accumulated_time += time_realtime_delta;
 
     // cache input for tick
-    input_update_cache();
+    input_update();
 
-    // screen
-    if (IsWindowResized()) {
-        screen_width = GetScreenWidth();
-        screen_height = GetScreenHeight();
+    bool is_on_frame = true;
+
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_EVENT_QUIT) { is_on_frame = false; }
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE) {
+            is_on_frame = false;
+        }
+
+        if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+            screen_width = event.window.data1;
+            screen_height = event.window.data2;
+        }
     }
 
-    //
-    bool should_close = WindowShouldClose() || input_is_key_down(SCANCODE::ESCAPE);
-    return !should_close;
+    return is_on_frame;
 }
 
 bool engine_on_tick() {
@@ -127,12 +149,13 @@ void engine_draw() {
     // interpolate
     interpolate_alpha = tick_accumulated_time / time_delta;
 
-    BeginDrawing();
-    ClearBackground(BLACK);
+    glViewport(0, 0, screen_width, screen_height);
+    glClearColor(1, 1, 1, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     graphics_draw();
 
-    EndDrawing();
+    SDL_GL_SwapWindow(sdl_window);
 }
 
 i32 engine_mem_offset(void *ptr) { return (char*)ptr - (char*)omni_arena_ptr->buf; }

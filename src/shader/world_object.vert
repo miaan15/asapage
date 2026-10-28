@@ -51,15 +51,8 @@ void main() {
 
     gl_Position = clip_pos;
 
-    o_instance_idx = gl_DrawID;
+    o_instance_idx = i_instance_idx;
     o_world_pos = world_pos.xyz;
     o_normal = mat3(instance.model_matrix) * vertex.normal; // only work with orthogonal transform, which is
     o_uv = vertex.uv;
-
-    vec2 pos[3] = vec2[](
-        vec2(-0.5, -0.5),
-        vec2( 0.5, -0.5),
-        vec2( 0.0,  0.5)
-    );
-    gl_Position = vec4(pos[gl_VertexID % 3], 0.0, 1.0);
 }

@@ -2,7 +2,6 @@ module;
 
 #include <cstdlib>
 #include <glad/gl.h>
-#include <rlgl.h>
 
 export module graphics;
 
@@ -104,17 +103,6 @@ void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
     glVertexArrayVertexBuffer(graphics_sys.iota_vao, 0, graphics_sys.iota_vbo, 0, sizeof(i32));
     glVertexArrayBindingDivisor(graphics_sys.iota_vao, 0, 1);
 
-    //
-    glUseProgram(graphics_sys.program);
-    glBindVertexArray(graphics_sys.iota_vao);
-
-    // bind buffers
-    glBindBufferBase(GL_UNIFORM_BUFFER, FRAME_CONSTANT_BIND_IDX, graphics_sys.frame_constant_uniform);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, INSTANCE_BUF_BIND_IDX, graphics_sys.instance_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_VERTEX_BUF_BIND_IDX, mesh_sys.mesh_vertex_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_INDEX_BUF_BIND_IDX, mesh_sys.mesh_index_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MATERIAL_BUF_BIND_IDX, material_sys.material_buf);
-
     // depth
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -126,6 +114,16 @@ void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
 }
 
 void graphics_draw() {
+    glUseProgram(graphics_sys.program);
+    glBindVertexArray(graphics_sys.iota_vao);
+
+    // bind buffers
+    glBindBufferBase(GL_UNIFORM_BUFFER, FRAME_CONSTANT_BIND_IDX, graphics_sys.frame_constant_uniform);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, INSTANCE_BUF_BIND_IDX, graphics_sys.instance_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_VERTEX_BUF_BIND_IDX, mesh_sys.mesh_vertex_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_INDEX_BUF_BIND_IDX, mesh_sys.mesh_index_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MATERIAL_BUF_BIND_IDX, material_sys.material_buf);
+
     // frame constant: view, projection
     Mat4 proj = mat4_perspective(
         graphics_sys.view_fov,

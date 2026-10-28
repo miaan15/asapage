@@ -1,6 +1,5 @@
 module;
 
-#include <raylib.h>
 #include <glad/gl.h>
 
 export module graphics_material;

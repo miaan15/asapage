@@ -85,9 +85,23 @@ function(build_vendor_lib lib_name out_cmake_dir)
     endif()
 endfunction()
 
-build_vendor_lib(raylib RAYLIB_CMAKE_DIR)
-find_package(raylib REQUIRED CONFIG
-    PATHS "${RAYLIB_CMAKE_DIR}"
+build_vendor_lib(SDL3 SDL3_CMAKE_DIR
+    -DBUILD_SHARED_LIBS=OFF
+    -DSDL_TESTS=OFF
+)
+find_package(SDL3 REQUIRED CONFIG
+    PATHS "${SDL3_CMAKE_DIR}"
+    NO_DEFAULT_PATH
+)
+
+build_vendor_lib(SDL3_image SDL3_IMAGE_CMAKE_DIR
+    -DBUILD_SHARED_LIBS=OFF
+    -DSDLIMAGE_TESTS=OFF
+    -DSDLIMAGE_SAMPLES=OFF
+    -DCMAKE_PREFIX_PATH=${SDL3_CMAKE_DIR}
+)
+find_package(SDL3_image REQUIRED CONFIG
+    PATHS "${SDL3_IMAGE_CMAKE_DIR}"
     NO_DEFAULT_PATH
 )
 
@@ -132,7 +146,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # link
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    raylib
+    SDL3::SDL3
+    SDL3_image::SDL3_image
 )
 
 if (WIN32)
