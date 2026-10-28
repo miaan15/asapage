@@ -1,13 +1,27 @@
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
-struct MaterialData {
-    sampler2D albedo_map;
-    vec4 base_color;
+layout(std140, binding = 0) uniform FrameConstant {
+    mat4 view_matrix;
+    mat4 projection_matrix;
+    float time;
+} frame_constant;
+
+struct InstanceData {
+    int mesh_vertex_offset;
+    int mesh_index_offset;
+    int material_offset;
+    float _pad0;
+    mat4 model_matrix;
+};
+layout(std430, binding = 1) readonly buffer InstanceBuf {
+    InstanceData instance_buf[];
 };
 
+struct Material {
+    vec4 base_color;
+};
 layout(std430, binding = 4) readonly buffer MaterialBuf {
-    MaterialData material_buf[];
+    Material material_buf[];
 };
 
 layout(location = 0) flat in int i_instance_idx;
@@ -18,9 +32,11 @@ layout(location = 3) in vec2 i_uv;
 layout(location = 0) out vec4 FragColor;
 
 void main() {
-    MaterialData mat = material_buf[i_instance_idx];
+    InstanceData instance = instance_buf[i_instance_idx];
 
-    vec4 tex_color = texture(mat.albedo_map, i_uv);
+    Material material = material_buf[instance.material_offset];
 
-    FragColor = tex_color * mat.base_color;
+    FragColor = material.base_color;
+
+    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
 }

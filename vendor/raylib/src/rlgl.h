@@ -5225,7 +5225,7 @@ static int rlGetPixelDataSize(int width, int height, int format)
 {
     int dataSize = 0;       // Size in bytes
     int bpp = 0;            // Bits per pixel
-    
+
     if ((width <= 0) || (height <= 0)) return dataSize;
 
     switch (format)

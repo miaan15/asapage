@@ -1,6 +1,3 @@
-// #include <cassert>
-// #define CGLTF_IMPLEMENTATION
-// #include <cgltf/cgltf.h>
 #include <raylib.h>
 
 import define;
@@ -18,8 +15,27 @@ import mapstr;
 using namespace asapage;
 
 int main() {
-    EngineConfigs engine_configs = DEFAULT_ENGINE_CONFIGS;
-    engine_init(&engine_configs);
+    engine_init();
+
+    mesh_load(file_asset_path("monkey.glb").c_str());
+    mesh_load(file_asset_path("box.glb").c_str());
+
+    material_load((Vec4){1, 0, 0, 1});
+
+    graphics_sys.draw_instance_list[graphics_sys.draw_instance_num++] = {
+        .position = { 0, 0, 0 },
+        .rotation = { 0, 0, 0, 1 },
+        .scale = { 1, 1, 1 },
+        .mesh_idx = 1,
+        .material_idx = 1
+    };
+
+    graphics_sys.view_size = { (f32)screen_width, (f32)screen_height };
+    graphics_sys.view_range = { 0.1, 100 };
+    graphics_sys.view_eye = { 0, 15, 10 };
+    graphics_sys.view_center = { 0, 0, 0 };
+    graphics_sys.view_up = { 0, 1, 0 };
+    graphics_sys.view_fov = 60 * MATH_DEG_TO_RAD;
 
     while (engine_on_frame()) {
         while (engine_on_tick()) {
@@ -30,107 +46,4 @@ int main() {
     }
 
     engine_destroy();
-
-    // internal_init();
-    // context_init();
-    //
-    // file_sys_init();
-    //
-    // input_sys_init();
-    //
-    // // graphics_sys_init();
-    // //
-    // // graphics_sys.view = (GraphicsGPUView) {
-    // //     .size = { (f32)screen_width, (f32)screen_height },
-    // //     .range = { 0.1, 100 },
-    // //     .eye = { 0, 15, 10 },
-    // //     .center = { 0, 0, 0 },
-    // //     .up = { 0, 1, 0 },
-    // //     .fov = 60 * MATH_DEG_TO_RAD
-    // // };
-    // //
-    // // graphics_sys.env = (GraphicsGPUEnv) {
-    // //     .light_pos = { 5, 10, 5 },
-    // //     .light_intensity = 1
-    // // };
-    // //
-    // // i32 box_model_idx = graphics_load_model("box.glb");
-    // // i32 monkey_model_idx = graphics_load_model("monkey.glb");
-    // //
-    // // auto *object_box = graphics_create_object();
-    // // object_box->model_idx = box_model_idx;
-    // // object_box->color = { 1, 0, 0 };
-    // // object_box->position = { -1.5, 0, 0 };
-    // // object_box->rotation = { 0.71, 0, 0, 0.71 };
-    // // object_box->scale = { 1, 2, 1 };
-    // //
-    // // auto *object_monkey = graphics_create_object();
-    // // object_monkey->model_idx = monkey_model_idx;
-    // // object_monkey->color = { 0, 0, 1 };
-    // // object_monkey->position = { 1.5, 0, 0 };
-    // // object_monkey->rotation = { 0, 0, 0, 1 };
-    // // object_monkey->scale = { 1, 1, 1 };
-    // //
-    // // i32 S = 10;
-    // // f32 D = 3;
-    // // for (i32 i = 0; i < S; i++) {
-    // //     for (i32 j = 0; j < S; j++) {
-    // //         auto *object = graphics_create_object();
-    // //         object->model_idx = (i * S + j) % 2 ? box_model_idx : monkey_model_idx;
-    // //         object->position = { (-(f32)S / 2 + i) * D, 0, (-(f32)S / 2 + j) * D };
-    // //         object->color = { (f32)i / S, (f32)j / S, 0 };
-    // //     }
-    // // }
-    // //
-    // // constexpr f32 EYE_ROTATION_SPEED = 0.1;
-    // // constexpr f32 LIGHT_ROTATION_SPEED = 0.1;
-    // // f32 eye_rotation_y = 0;
-    // // f32 eye_distance = 12;
-    // // f32 light_rotation_x = 0;
-    // // f32 light_distance = 100;
-    // //
-    // // main loop
-    // bool app_running = true;
-    // while (app_running) {
-    //     internal_early_frame_update();
-    //
-    //     input_pre_poll_update();
-    //
-    //     internal_poll_events(&app_running);
-    //
-    //     // tick update
-    //     while (internal_on_tick()) {
-    //         internal_tick_update();
-    //
-    //         // if (input_is_key_on_cache(SCANCODE::A)) { eye_rotation_y += EYE_ROTATION_SPEED; }
-    //         // if (input_is_key_on_cache(SCANCODE::D)) { eye_rotation_y -= EYE_ROTATION_SPEED; }
-    //         // if (input_is_key_on_cache(SCANCODE::W)) { light_rotation_x += LIGHT_ROTATION_SPEED; }
-    //         // if (input_is_key_on_cache(SCANCODE::S)) { light_rotation_x -= LIGHT_ROTATION_SPEED; }
-    //         //
-    //         // if (input_is_key_on_cache(SCANCODE::UP)) { object_monkey->position.z -= .1; }
-    //         // if (input_is_key_on_cache(SCANCODE::DOWN)) { object_monkey->position.z += .1; }
-    //         // if (input_is_key_on_cache(SCANCODE::LEFT)) { object_monkey->position.x -= .1; }
-    //         // if (input_is_key_on_cache(SCANCODE::RIGHT)) { object_monkey->position.x += .1; }
-    //         //
-    //         // graphics_sys.view.eye = mat4_rotation(quat_normalize((Quat) { 0, math_sin(eye_rotation_y / 2), 0, -math_cos(eye_rotation_y / 2) })) * VEC3_BACK * eye_distance;
-    //         // graphics_sys.view.eye.y += 10;
-    //         //
-    //         // graphics_sys.env.light_pos = mat4_rotation(quat_normalize((Quat) { math_sin(light_rotation_x / 2), 0, 0, -math_cos(light_rotation_x / 2) }))  * VEC3_BACK * light_distance;
-    //         //
-    //         input_reset_cache();
-    //     }
-    //
-    //     internal_pre_draw_update();
-    //
-    //     // graphics_draw();
-    // }
-    //
-    // // graphics_sys_destroy();
-    //
-    // internal_destroy();
-    //
-    // SDL_DestroyWindow(sdl_window);
-    // SDL_Quit();
-    //
-    // return 0;
 }

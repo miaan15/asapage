@@ -23,12 +23,12 @@ function(build_vendor_lib lib_name out_cmake_dir)
     set(VENDOR_BUILD_DIR "${VENDOR_OUT_DIR}/build")
     set(VENDOR_INSTALL_DIR "${VENDOR_OUT_DIR}/install")
 
+    file(TO_NATIVE_PATH "${VENDOR_SOURCE_DIR}" NATIVE_SOURCE_DIR)
+    file(TO_NATIVE_PATH "${VENDOR_BUILD_DIR}" NATIVE_BUILD_DIR)
+    file(TO_NATIVE_PATH "${VENDOR_INSTALL_DIR}" NATIVE_INSTALL_DIR)
+
     if(NOT EXISTS "${VENDOR_BUILD_DIR}/CMakeCache.txt")
         message(STATUS "Building vendor: ${lib_name}...")
-
-        file(TO_NATIVE_PATH "${VENDOR_SOURCE_DIR}" NATIVE_SOURCE_DIR)
-        file(TO_NATIVE_PATH "${VENDOR_BUILD_DIR}" NATIVE_BUILD_DIR)
-        file(TO_NATIVE_PATH "${VENDOR_INSTALL_DIR}" NATIVE_INSTALL_DIR)
 
         # config
         execute_process(
@@ -47,19 +47,21 @@ function(build_vendor_lib lib_name out_cmake_dir)
             message(FATAL_ERROR "Failed to configure vendor target: ${lib_name}")
         endif()
 
-        # build
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} --build "${NATIVE_BUILD_DIR}" --config Release
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            RESULT_VARIABLE BUILD_RESULT
-        )
+    endif()
 
-        if(NOT BUILD_RESULT EQUAL 0)
-            file(REMOVE_RECURSE "${VENDOR_OUT_DIR}")
-            message(FATAL_ERROR "Failed to build vendor target: ${lib_name}")
-        endif()
+    # build
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --build "${NATIVE_BUILD_DIR}" --config Release
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE BUILD_RESULT
+    )
 
-        # install
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build vendor target: ${lib_name}")
+    endif()
+
+    # install
+    if (NOT EXISTS "${VENDOR_INSTALL_DIR}")
         execute_process(
             COMMAND ${CMAKE_COMMAND} --install "${NATIVE_BUILD_DIR}" --prefix "${NATIVE_INSTALL_DIR}" --config Release
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -67,10 +69,12 @@ function(build_vendor_lib lib_name out_cmake_dir)
         )
 
         if(NOT INSTALL_RESULT EQUAL 0)
-            file(REMOVE_RECURSE "${VENDOR_OUT_DIR}")
+            file(REMOVE_RECURSE "${VENDOR_INSTALL_DIR}")
             message(FATAL_ERROR "Failed to install vendor target: ${lib_name}")
         endif()
-    else()
+    endif()
+
+    if(BUILD_RESULT EQUAL 0 AND INSTALL_RESULT EQUAL 0)
         message(STATUS "OK, ${lib_name}")
     endif()
 

@@ -152,4 +152,22 @@ bool file_remove(string_view path) {
     return ok;
 }
 
+string file_read(string_view path) {
+    string native = file_native_path(path);
+
+    FILE *fp = fopen(native.c_str(), "r");
+
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    string res; res.resize(size);
+
+    fread(res.data(), 1, size, fp);
+
+    fclose(fp);
+
+    return res;
+}
+
 }

@@ -236,7 +236,7 @@
     #define SUPPORT_FILEFORMAT_TGA      0       // Disabled by default
 #endif
 #ifndef SUPPORT_FILEFORMAT_JPG
-    #define SUPPORT_FILEFORMAT_JPG      0       // Disabled by default
+    #define SUPPORT_FILEFORMAT_JPG      1       // Disabled by default
 #endif
 #ifndef SUPPORT_FILEFORMAT_GIF
     #define SUPPORT_FILEFORMAT_GIF      1
@@ -328,7 +328,7 @@
     #define SUPPORT_MESH_GENERATION     1
 #endif
 #ifndef SUPPORT_GPU_SKINNING
-    // GPU skinning enabled by default for GL3.3+, 
+    // GPU skinning enabled by default for GL3.3+,
     //  Some GPUs do not support more than 8 VBOs so you may need to disable it if you have issues loading animated models
     #define SUPPORT_GPU_SKINNING        1
 #endif

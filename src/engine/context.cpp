@@ -9,10 +9,4 @@ import internal;
 
 export namespace asapage {
 
-void context_init() {
-}
-
-void context_frame_update() {
-}
-
 }
