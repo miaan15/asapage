@@ -86,6 +86,7 @@ function(build_vendor_lib lib_name out_cmake_dir)
 endfunction()
 
 build_vendor_lib(raylib RAYLIB_CMAKE_DIR
+    -DBUILD_EXAMPLES=OFF
     -DGRAPHICS=GRAPHICS_API_OPENGL_43
 )
 find_package(raylib REQUIRED CONFIG

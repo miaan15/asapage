@@ -1,1 +1,1 @@
-- raylib: src/external/glad.h; src/external/glad_gles2.h; SUPPORT_FILEFORMAT_JPG
+- raylib: removes CPack

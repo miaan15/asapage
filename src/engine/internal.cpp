@@ -6,7 +6,6 @@ export module internal;
 
 import define;
 import mem;
-import graphics_core;
 
 export namespace asapage {
 

@@ -2,7 +2,7 @@ module;
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf/cgltf.h>
-#include <glad/gl.h>
+#include <glad.h>
 
 export module graphics_mesh;
 

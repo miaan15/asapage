@@ -1,11 +1,10 @@
 module;
 
 #include <cstdlib>
-#include <glad/gl.h>
+#include <glad.h>
 
 export module graphics;
 
-export import graphics_core;
 export import graphics_shader;
 export import graphics_mesh;
 export import graphics_material;
