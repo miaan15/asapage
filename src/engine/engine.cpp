@@ -1,6 +1,7 @@
 module;
 
 #include <raylib.h>
+#include <glad/gl.h>
 
 export module engine;
 
@@ -44,6 +45,10 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
     usize tick_arena_size = static_configs == nullptr ? DEFAULT_TICK_ARENA_SIZE : static_configs->tick_arena_size;
     usize frame_arena_size = static_configs == nullptr ? DEFAULT_FRAME_ARENA_SIZE : static_configs->frame_arena_size;
 
+    // raylib
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(init_window_width, init_window_height, init_window_name);
+
     // arena
     arena_init(&omni_arena, omni_arena_size);
 
@@ -58,10 +63,6 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
     omni_arena_ptr = &omni_arena;
     tick_arena_ptr = &tick_arena_buf[tick_arena_cur_idx];
     frame_arena_ptr = &frame_arena_buf[frame_arena_cur_idx];
-
-    // window
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(init_window_width, init_window_height, init_window_name);
 
     // screen
     screen_width = GetScreenWidth();

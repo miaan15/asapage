@@ -4,15 +4,12 @@ asapage - ah sh** another project about game engine
 ### Require
 - Ninja
 - CMake
-- Vulkan
-```
-# Window
-winget install KhronosGroup.VulkanSDK
+- OpenGL 4.3
 ```
 
 ### Run
 ```
-cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Debug
+cmake -B build -GNinja
 cmake --build build
 ./build/asapage
 ```
