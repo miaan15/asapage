@@ -30,13 +30,9 @@ inline MaterialSys material_sys = {};
 
 void material_sys_init(i32 material_cap = MATERIAL_MAX_MATERIAL,
                        usize max_material_buf_size = MATERIAL_MAX_MATERIAL_BUF_SIZE) {
-    glCreateBuffers(1, &material_sys.material_buf);
-    glNamedBufferStorage(
-        material_sys.material_buf,
-        max_material_buf_size,
-        nullptr,
-        GL_DYNAMIC_STORAGE_BIT
-    );
+    glGenBuffers(1, &material_sys.material_buf);
+    glBindBuffer(GL_ARRAY_BUFFER, material_sys.material_buf);
+    glBufferData(GL_ARRAY_BUFFER, max_material_buf_size, nullptr, GL_DYNAMIC_DRAW);
 
     material_sys.material_cap = material_cap;
 
@@ -58,12 +54,14 @@ void material_load(Vec4 base_color = (Vec4){ 1, 1, 1, 1 }) { // might be more co
     };
 
     usize meterial_buf_offset = material_idx * sizeof(MaterialGPU);
-    glNamedBufferSubData(
-        material_sys.material_buf,
+    glBindBuffer(GL_ARRAY_BUFFER, material_sys.material_buf);
+    glBufferSubData(
+        GL_ARRAY_BUFFER,
         meterial_buf_offset,
         sizeof(MaterialGPU),
         &_material
     );
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     material_sys.material_num++;
 

@@ -78,30 +78,29 @@ void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
     glLinkProgram(graphics_sys.program);
 
     // buffers
-    glCreateBuffers(1, &graphics_sys.instance_buf);
-    glNamedBufferStorage(graphics_sys.instance_buf,
-                         draw_instance_cap * sizeof(InstanceDataGPU),
-                         nullptr,
-                         GL_DYNAMIC_STORAGE_BIT);
+    glGenBuffers(1, &graphics_sys.instance_buf);
+    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.instance_buf);
+    glBufferData(GL_ARRAY_BUFFER, draw_instance_cap * sizeof(InstanceDataGPU), nullptr, GL_DYNAMIC_DRAW);
 
-    glCreateBuffers(1, &graphics_sys.frame_constant_uniform);
-    glNamedBufferStorage(graphics_sys.frame_constant_uniform,
-                         sizeof(FrameConstantGPU),
-                         nullptr,
-                         GL_DYNAMIC_STORAGE_BIT);
+    glGenBuffers(1, &graphics_sys.frame_constant_uniform);
+    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_uniform);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(FrameConstantGPU), nullptr, GL_DYNAMIC_DRAW);
 
     // create a static vao that only contains 0 -> cap, which is handy for my render approach
-    glCreateBuffers(1, &graphics_sys.iota_vbo);
+    glGenBuffers(1, &graphics_sys.iota_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
     i32 *iota_buf = (i32*)malloc(draw_instance_cap * sizeof(i32));
     for (i32 i = 0; i < draw_instance_cap; ++i) { iota_buf[i] = i; }
-    glNamedBufferStorage(graphics_sys.iota_vbo, draw_instance_cap * sizeof(i32), iota_buf, 0);
+    glBufferData(GL_ARRAY_BUFFER, draw_instance_cap * sizeof(i32), iota_buf, GL_STATIC_DRAW);
     free(iota_buf);
 
-    glCreateVertexArrays(1, &graphics_sys.iota_vao);
-    glEnableVertexArrayAttrib(graphics_sys.iota_vao, 0);
-    glVertexArrayAttribIFormat(graphics_sys.iota_vao, 0, 1, GL_INT, 0);
-    glVertexArrayVertexBuffer(graphics_sys.iota_vao, 0, graphics_sys.iota_vbo, 0, sizeof(i32));
-    glVertexArrayBindingDivisor(graphics_sys.iota_vao, 0, 1);
+    glGenVertexArrays(1, &graphics_sys.iota_vao);
+    glBindVertexArray(graphics_sys.iota_vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribIPointer(0, 1, GL_INT, sizeof(i32), (void*)0);
+    glVertexAttribDivisor(0, 1);
 
     // depth
     glEnable(GL_DEPTH_TEST);
@@ -146,10 +145,16 @@ void graphics_draw() {
     };
 
     // update buffers
-    glNamedBufferSubData(graphics_sys.frame_constant_uniform,
-                         0, sizeof(FrameConstantGPU),
-                         &frame_constant);
+    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_uniform);
+    glBufferSubData(
+        GL_UNIFORM_BUFFER,
+        0,
+        sizeof(FrameConstantGPU),
+        &frame_constant
+    );
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    // FIXME maybe this should be on GPU
     for (i32 i = 0; i < graphics_sys.draw_instance_num; i++) {
         DrawInstance draw_instance = graphics_sys.draw_instance_list[i];
         MeshMeta mesh_meta = mesh_get_meta(draw_instance.mesh_idx);
@@ -162,16 +167,21 @@ void graphics_draw() {
                             mat4_scale(draw_instance.scale)
         };
     }
-    glNamedBufferSubData(graphics_sys.instance_buf,
-                         0, graphics_sys.draw_instance_num * sizeof(InstanceDataGPU),
-                         graphics_sys.instance_buf_mapped);
+    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.instance_buf);
+    glBufferSubData(
+        GL_ARRAY_BUFFER,
+        0,
+        graphics_sys.draw_instance_num * sizeof(InstanceDataGPU),
+        graphics_sys.instance_buf_mapped
+    );
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // draw
     for (i32 i = 0; i < graphics_sys.draw_instance_num; i++) {
         DrawInstance draw_instance = graphics_sys.draw_instance_list[i];
         MeshMeta mesh_meta = mesh_get_meta(draw_instance.mesh_idx);
 
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, mesh_meta.indices_num, 1, i);
+        glDrawArrays(GL_TRIANGLES, 0, mesh_meta.indices_num);
     }
 }
 
