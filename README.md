@@ -1,11 +1,9 @@
 asapage - ah sh** another project about game engine
 
-## Run
-### Require
+### Requirements
 - Ninja
 - CMake
 - OpenGL 4.3
-```
 
 ### Run
 ```
