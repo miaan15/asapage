@@ -1,28 +1,3 @@
-#version 430 core
-
-layout(std140, binding = 0) uniform FrameConstant {
-    mat4 view_matrix;
-    mat4 projection_matrix;
-} frame_constant;
-
-struct InstanceData {
-    int mesh_vertex_offset;
-    int mesh_index_offset;
-    int material_offset;
-    float _pad0;
-    mat4 model_matrix;
-};
-layout(std430, binding = 1) readonly buffer InstanceBuf {
-    InstanceData instance_buf[];
-};
-
-struct Material {
-    vec4 base_color;
-};
-layout(std430, binding = 4) readonly buffer MaterialBuf {
-    Material material_buf[];
-};
-
 layout(location = 0) flat in int i_instance_idx;
 layout(location = 1) in vec3 i_world_pos;
 layout(location = 2) flat in vec3 i_normal;
@@ -35,5 +10,16 @@ void main() {
 
     Material material = material_buf[instance.material_offset];
 
-    FragColor = material.base_color;
+    // FIXME
+    vec3 light_pos = vec3(5, 10, 5);
+
+    vec3 light_dir = normalize(light_pos - i_world_pos);
+    vec3 reflected_dir = reflect(-light_dir, i_normal);
+    vec3 view_dir = normalize(frame_constant.eye_pos - i_world_pos);
+
+    vec3 ambient_color = material.base_color.xyz * 0.1;
+    vec3 diffuse_color = max(0, dot(light_dir, i_normal)) * material.base_color.xyz * 0.5;
+    vec3 specular_color = pow(max(0, dot(reflected_dir, view_dir)), 1) * vec3(1) * 0.5;
+
+    FragColor = vec4(ambient_color + (diffuse_color + specular_color) * 1, 1);
 }

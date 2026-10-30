@@ -55,12 +55,12 @@ void mesh_sys_init(i32 mesh_cap = MESH_MAX_MESH_NUM,
                    usize max_mash_vertex_buf_size = MESH_MAX_MESH_VERTEX_BUF_SIZE,
                    usize max_mash_index_buf_size = MESH_MAX_MESH_INDEX_BUF_SIZE) {
     glGenBuffers(1, &mesh_sys.mesh_vertex_buf);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh_sys.mesh_vertex_buf);
-    glBufferData(GL_ARRAY_BUFFER, max_mash_vertex_buf_size, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_vertex_buf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, max_mash_vertex_buf_size, nullptr, GL_DYNAMIC_DRAW);
 
     glGenBuffers(1, &mesh_sys.mesh_index_buf);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh_sys.mesh_index_buf);
-    glBufferData(GL_ARRAY_BUFFER, max_mash_index_buf_size, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_index_buf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, max_mash_index_buf_size, nullptr, GL_DYNAMIC_DRAW);
 
     mesh_sys.mesh_meta_list = (MeshMeta*)arena_alloc(omni_arena_ptr, mesh_cap * sizeof(MeshMeta));
     mesh_sys.mesh_cap = mesh_cap;
@@ -172,9 +172,9 @@ void mesh_load(const char *path) {
         // upload to GPU
         i32 mesh_vertex_offset = mesh_sys.loaded_mesh_vertex_num;
         usize mesh_vertex_buf_bytes_offset = mesh_vertex_offset * sizeof(MeshVertexGPU);
-        glBindBuffer(GL_ARRAY_BUFFER, mesh_sys.mesh_vertex_buf);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_vertex_buf);
         glBufferSubData(
-            GL_ARRAY_BUFFER,
+            GL_SHADER_STORAGE_BUFFER,
             mesh_vertex_buf_bytes_offset,
             total_vertex_num * sizeof(MeshVertexGPU),
             mesh_vertex_buf_mapped_buf

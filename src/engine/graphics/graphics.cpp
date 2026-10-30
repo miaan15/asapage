@@ -17,12 +17,14 @@ import log;
 
 export namespace asapage {
 
-struct FrameConstantGPU {
+struct alignas(16) FrameConstantGPU {
     Mat4 view_matrix;
     Mat4 projection_matrix;
+    Vec3 eye_pos;
+    f32 _pad0;
 };
 
-struct InstanceDataGPU {
+struct alignas(16) InstanceDataGPU {
     i32 mesh_vertex_offset;
     i32 mesh_index_offset;
     i32 material_offset;
@@ -75,6 +77,17 @@ void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
     glAttachShader(graphics_sys.program, SHADER_VERTEX_WORLD_OBJECT);
     glAttachShader(graphics_sys.program, SHADER_FRAGMENT_WORLD_OBJECT);
     glLinkProgram(graphics_sys.program);
+
+    GLint _linked = 0;
+    glGetProgramiv(graphics_sys.program, GL_LINK_STATUS, &_linked);
+    if (!_linked) {
+        GLint log_len = 0;
+        glGetProgramiv(graphics_sys.program, GL_INFO_LOG_LENGTH, &log_len);
+        char *log = (char*)malloc(log_len);
+        glGetProgramInfoLog(graphics_sys.program, log_len, nullptr, log);
+        log_err("graphics_sys_init: program linking failed:\n%s", log);
+        free(log);
+    }
 
     // buffers
     glGenBuffers(1, &graphics_sys.instance_buf);
@@ -134,13 +147,14 @@ void graphics_draw() {
     Vec3 r = vec3_normalize(vec3_cross(f, graphics_sys.view_up));
     Vec3 u = vec3_cross(r, f);
     Mat4 view = MAT4_IDENTITY;
-    view.raw[0][0] = r.x;  view.raw[1][0] = r.y;  view.raw[2][0] = r.z;  view.raw[3][0] = -vec3_dot(r, graphics_sys.view_eye);
-    view.raw[0][1] = u.x;  view.raw[1][1] = u.y;  view.raw[2][1] = u.z;  view.raw[3][1] = -vec3_dot(u, graphics_sys.view_eye);
+    view.raw[0][0] =  r.x; view.raw[1][0] =  r.y; view.raw[2][0] =  r.z; view.raw[3][0] = -vec3_dot(r, graphics_sys.view_eye);
+    view.raw[0][1] =  u.x; view.raw[1][1] =  u.y; view.raw[2][1] =  u.z; view.raw[3][1] = -vec3_dot(u, graphics_sys.view_eye);
     view.raw[0][2] = -f.x; view.raw[1][2] = -f.y; view.raw[2][2] = -f.z; view.raw[3][2] =  vec3_dot(f, graphics_sys.view_eye);
 
     FrameConstantGPU frame_constant = {
         .view_matrix = view,
-        .projection_matrix = proj
+        .projection_matrix = proj,
+        .eye_pos = graphics_sys.view_eye
     };
 
     // update buffers
@@ -166,21 +180,22 @@ void graphics_draw() {
                             mat4_scale(draw_instance.scale)
         };
     }
-    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.instance_buf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, graphics_sys.instance_buf);
     glBufferSubData(
-        GL_ARRAY_BUFFER,
+        GL_SHADER_STORAGE_BUFFER,
         0,
         graphics_sys.draw_instance_num * sizeof(InstanceDataGPU),
         graphics_sys.instance_buf_mapped
     );
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     // draw
     for (i32 i = 0; i < graphics_sys.draw_instance_num; i++) {
         DrawInstance draw_instance = graphics_sys.draw_instance_list[i];
         MeshMeta mesh_meta = mesh_get_meta(draw_instance.mesh_idx);
 
-        glDrawArrays(GL_TRIANGLES, 0, mesh_meta.indices_num);
+        // glDrawArrays(GL_TRIANGLES, 0, mesh_meta.indices_num);
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, mesh_meta.indices_num, 1, i);
     }
 }
 

@@ -16,14 +16,14 @@ enum struct SHADER_TYPE { VERTEX, FRAGMENT };
 GLuint SHADER_VERTEX_WORLD_OBJECT = -1;
 GLuint SHADER_FRAGMENT_WORLD_OBJECT = -1;
 
-GLuint shader_load(const char *path, SHADER_TYPE shader_type) {
+GLuint shader_world_object_load(const char *path, const char *header_code, int header_code_len, SHADER_TYPE shader_type) {
     string code = file_read(path);
-    char *code_ptr = code.data(); // wtf is opengl smoking
-    i32 code_len = code.size();
+    const char *code_ptrs[2] = { header_code, code.c_str() }; // wtf is opengl smoking
+    i32 code_lens[2] = { header_code_len, (int)code.length() };
 
     GLenum type = (shader_type == SHADER_TYPE::VERTEX) ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
     GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &code_ptr, &code_len);
+    glShaderSource(shader, 2, code_ptrs, code_lens);
     glCompileShader(shader);
 
     bool success = 0;
@@ -52,8 +52,14 @@ GLuint shader_load(const char *path, SHADER_TYPE shader_type) {
 }
 
 void shader_sys_init() {
-    SHADER_VERTEX_WORLD_OBJECT = shader_load(file_source_path("shader/world_object.vert").c_str(), SHADER_TYPE::VERTEX);
-    SHADER_FRAGMENT_WORLD_OBJECT = shader_load(file_source_path("shader/world_object.frag").c_str(), SHADER_TYPE::FRAGMENT);
+    string world_object_header_code = file_read(file_source_path("shader/world_object_header.glsl").c_str());
+
+    SHADER_VERTEX_WORLD_OBJECT = shader_world_object_load(file_source_path("shader/world_object.vert").c_str(),
+                                                          world_object_header_code.c_str(), world_object_header_code.length(),
+                                                          SHADER_TYPE::VERTEX);
+    SHADER_FRAGMENT_WORLD_OBJECT = shader_world_object_load(file_source_path("shader/world_object.frag").c_str(),
+                                                            world_object_header_code.c_str(), world_object_header_code.length(),
+                                                            SHADER_TYPE::FRAGMENT);
 }
 
 }

@@ -19,6 +19,7 @@ int main() {
     mesh_load(file_asset_path("box.glb").c_str());
 
     material_load((Vec4){1, 0, 0, 1});
+    material_load((Vec4){0, 1, 0, 1});
 
     graphics_sys.draw_instance_list[graphics_sys.draw_instance_num++] = {
         .position = { 0, 0, 0 },
@@ -26,6 +27,14 @@ int main() {
         .scale = { 1, 1, 1 },
         .mesh_idx = 1,
         .material_idx = 1
+    };
+
+    graphics_sys.draw_instance_list[graphics_sys.draw_instance_num++] = {
+        .position = { 2, 0, 2 },
+        .rotation = { 0, 0, 0, 1 },
+        .scale = { 1, 2, 1 },
+        .mesh_idx = 2,
+        .material_idx = 2
     };
 
     graphics_sys.view_size = { (f32)screen_width, (f32)screen_height };
