@@ -91,8 +91,8 @@ void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
 
     // buffers
     glGenBuffers(1, &graphics_sys.instance_buf);
-    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.instance_buf);
-    glBufferData(GL_ARRAY_BUFFER, draw_instance_cap * sizeof(InstanceDataGPU), nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, graphics_sys.instance_buf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, draw_instance_cap * sizeof(InstanceDataGPU), nullptr, GL_DYNAMIC_DRAW);
 
     glGenBuffers(1, &graphics_sys.frame_constant_uniform);
     glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_uniform);
