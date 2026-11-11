@@ -1,7 +1,20 @@
 module;
 
+#include "define.hpp"
 #include <cstdarg>
 #include <cstdio>
+
+#if defined(PLATFORM_LINUX) && defined(BUILD_DEBUG)
+    #define LOG_USE_BACKTRACE
+#endif
+
+#ifdef LOG_USE_BACKTRACE
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <cstdint>
+#include <cstring>
+#endif
 
 export module log;
 
@@ -35,12 +48,50 @@ inline const char* log_level_str(int level) {
     }
 }
 
+inline void print_stacktrace(FILE* stream) {
+#ifdef LOG_USE_BACKTRACE
+    void* array[32];
+    int size = backtrace(array, 32);
+
+    int _size = size > 2 + 4 ? 2 + 4 : size;
+    for (int i = 2; i < _size; ++i) {
+        Dl_info info;
+        if (dladdr(array[i], &info) && info.dli_fname) {
+            uintptr_t addr = (uintptr_t)array[i] - (uintptr_t)info.dli_fbase;
+
+            char cmd[512];
+            snprintf(cmd, sizeof(cmd), "addr2line -C -f -e \"%s\" 0x%lx", info.dli_fname, (unsigned long)addr);
+
+            FILE* fp = popen(cmd, "r");
+            if (fp) {
+                char func[256] = {0};
+                char file[256] = {0};
+                if (fgets(func, sizeof(func), fp) && fgets(file, sizeof(file), fp)) {
+                    func[strcspn(func, "\r\n")] = 0;
+                    file[strcspn(file, "\r\n")] = 0;
+                    fprintf(stream, " %d. %-32.32s - %s\n", i - 1, func, file);
+                } else {
+                    fprintf(stream, " %d. %-32.32s - (+0x%lx)\n", i - 1, info.dli_fname, (unsigned long)addr);
+                }
+                pclose(fp);
+            } else {
+                fprintf(stream, " %d. 0x%lx\n", i - 1, (unsigned long)array[i]);
+            }
+        }
+    }
+#endif
+}
+
 inline void log(int level, const char* format, va_list args) {
     FILE* stream = (level >= LOG_WARN_LEVEL) ? stderr : stdout;
 
     fprintf(stream, "[%s] ", log_level_str(level));
     vfprintf(stream, format, args);
     fprintf(stream, "\n");
+
+#ifdef LOG_USE_BACKTRACE
+    if (level >= LOG_WARN_LEVEL) { print_stacktrace(stream); }
+#endif
 }
 
 inline void log_trace([[maybe_unused]] const char* format, ...) {
