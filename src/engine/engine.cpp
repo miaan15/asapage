@@ -72,9 +72,6 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
 
     file_sys_init();
 
-    shader_sys_init();
-    mesh_sys_init();
-    material_sys_init();
     graphics_sys_init();
 }
 

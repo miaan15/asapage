@@ -6,6 +6,7 @@ module;
 export module graphics;
 
 export import graphics_shader;
+export import graphics_object3d;
 export import graphics_mesh;
 export import graphics_material;
 
@@ -17,51 +18,7 @@ import log;
 
 export namespace asapage {
 
-struct alignas(16) FrameConstantGPU {
-    Mat4 view_matrix;
-    Mat4 projection_matrix;
-    Vec3 eye_pos;
-    f32 _pad0;
-};
-
-struct alignas(16) InstanceDataGPU {
-    i32 mesh_vertex_offset;
-    i32 mesh_index_offset;
-    i32 material_offset;
-    float _pad0;
-    Mat4 model_matrix;
-};
-
-constexpr i32 GRAPHICS_MAX_DRAW_INSTANCE_NUM = 1 << 17; // >100K
-
-constexpr GLuint FRAME_CONSTANT_BIND_IDX = 0;
-constexpr GLuint INSTANCE_BUF_BIND_IDX = 1;
-constexpr GLuint MESH_VERTEX_BUF_BIND_IDX = 2;
-constexpr GLuint MESH_INDEX_BUF_BIND_IDX = 3;
-constexpr GLuint MATERIAL_BUF_BIND_IDX = 4;
-
-struct DrawInstance {
-    Vec3 position;
-    Vec4 rotation;
-    Vec3 scale;
-    i32 mesh_idx;
-    i32 material_idx;
-};
-
-struct GraphicsSys {
-    GLuint program;
-    GLuint instance_buf;
-    GLuint frame_constant_uniform;
-
-    GLuint iota_vbo;
-    GLuint iota_vao;
-
-    InstanceDataGPU *instance_buf_mapped;
-
-    DrawInstance *draw_instance_list;
-    i32 draw_instance_num;
-    i32 draw_instance_cap;
-
+struct FrameConstant {
     Vec2 view_size;
     Vec2 view_range;
     Vec3 view_eye;
@@ -69,134 +26,180 @@ struct GraphicsSys {
     Vec3 view_up;
     f32 view_fov;
 };
+
+struct alignas(16) FrameConstantGPUMap {
+    Mat4 view_matrix;
+    Mat4 projection_matrix;
+    Vec3 eye_pos;
+    f32 _pad0;
+};
+
+struct GraphicsSysDesc {
+    i32 mesh_cap;
+    usize mesh_vertex_buf_size;
+    usize mesh_index_buf_size;
+
+    i32 material_cap;
+
+    i32 object_cap;
+};
+// constexpr GraphicsSysDesc GRAPHICS_SYS_DESC_DEFAULT = {
+//     .mesh_cap = MESH_CAP_DEFAULT,
+//     .mesh_vertex_buf_size = MESH_VERTEX_BUF_SIZE_DEFAULT,
+//     .mesh_index_buf_size = MESH_INDEX_BUF_SIZE_DEFAULT,
+//     .material_cap = MATERIAL_CAP_DEFAULT,
+//     .object_cap = OBJECT3D_CAP_DEFAULT,
+// };
+
+struct GraphicsSys {
+    GLuint gpu_program;
+    GLuint frame_constant_gpu_uniform;
+
+    // a vbo that contains array of ints 0->MAX, use for pass object_idx (which use to access object data) to shader
+    // because gl 4.3 does not has 'that' functionality yet (or I thought that)
+    GLuint iota_vao;
+    GLuint iota_vbo;
+
+    FrameConstant frame_constant;
+    FrameConstantGPUMap frame_constant_gpu_map;
+};
 inline GraphicsSys graphics_sys = {};
 
-void graphics_sys_init(i32 draw_instance_cap = GRAPHICS_MAX_DRAW_INSTANCE_NUM) {
-    // program
-    graphics_sys.program = glCreateProgram();
-    glAttachShader(graphics_sys.program, SHADER_VERTEX_WORLD_OBJECT);
-    glAttachShader(graphics_sys.program, SHADER_FRAGMENT_WORLD_OBJECT);
-    glLinkProgram(graphics_sys.program);
+// storage buffer/uniform location in shader
+constexpr GLuint FRAME_CONSTANT_UNIFORM_BIND_IDX = 0;
+constexpr GLuint OBJECT_LIST_BIND_IDX = 1;
+constexpr GLuint MESH_VERTEX_BUF_BIND_IDX = 2;
+constexpr GLuint MESH_INDEX_BUF_BIND_IDX = 3;
+constexpr GLuint MATERIAL_LIST_BIND_IDX = 4;
+
+void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
+    shader_sys_init(); // FIXME shader is a different shiet here, but for the sake of simplicity for now, I put it here
+
+    if (desc != nullptr) {
+        mesh_sys_init(desc->mesh_cap, desc->mesh_vertex_buf_size, desc->mesh_index_buf_size);
+        material_sys_init(desc->material_cap);
+        object3d_sys_init(desc->object_cap);
+    } else {
+        mesh_sys_init();
+        material_sys_init();
+        object3d_sys_init();
+    }
+
+    // program, link with shaders
+    graphics_sys.gpu_program = glCreateProgram();
+    glAttachShader(graphics_sys.gpu_program, SHADER_VERTEX_WORLD_OBJECT);
+    glAttachShader(graphics_sys.gpu_program, SHADER_FRAGMENT_WORLD_OBJECT);
+    glLinkProgram(graphics_sys.gpu_program);
 
     GLint _linked = 0;
-    glGetProgramiv(graphics_sys.program, GL_LINK_STATUS, &_linked);
+    glGetProgramiv(graphics_sys.gpu_program, GL_LINK_STATUS, &_linked);
     if (!_linked) {
         GLint log_len = 0;
-        glGetProgramiv(graphics_sys.program, GL_INFO_LOG_LENGTH, &log_len);
+        glGetProgramiv(graphics_sys.gpu_program, GL_INFO_LOG_LENGTH, &log_len);
         char *log = (char*)malloc(log_len);
-        glGetProgramInfoLog(graphics_sys.program, log_len, nullptr, log);
-        log_err("graphics_sys_init: program linking failed:\n%s", log);
+        glGetProgramInfoLog(graphics_sys.gpu_program, log_len, nullptr, log);
+        log_err("graphics_sys_init(): program linking failed:\n%s", log);
         free(log);
     }
 
-    // buffers
-    glGenBuffers(1, &graphics_sys.instance_buf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, graphics_sys.instance_buf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, draw_instance_cap * sizeof(InstanceDataGPU), nullptr, GL_DYNAMIC_DRAW);
+    //
+    glGenBuffers(1, &graphics_sys.frame_constant_gpu_uniform);
+    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_gpu_uniform); {
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(FrameConstantGPUMap), nullptr, GL_DYNAMIC_DRAW);
+    } glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glGenBuffers(1, &graphics_sys.frame_constant_uniform);
-    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_uniform);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(FrameConstantGPU), nullptr, GL_DYNAMIC_DRAW);
-
-    // create a static vao that only contains 0 -> cap, which is handy for my render approach
+    // iota vbo
     glGenBuffers(1, &graphics_sys.iota_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
-    i32 *iota_buf = (i32*)malloc(draw_instance_cap * sizeof(i32));
-    for (i32 i = 0; i < draw_instance_cap; ++i) { iota_buf[i] = i; }
-    glBufferData(GL_ARRAY_BUFFER, draw_instance_cap * sizeof(i32), iota_buf, GL_STATIC_DRAW);
-    free(iota_buf);
+    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo); {
+        i32 cap = object3d_sys.object_pool.cap;
+
+        i32 *iota_buf = (i32*)malloc(cap * sizeof(i32));
+        for (i32 i = 0; i < cap; ++i) { iota_buf[i] = i; }
+
+        glBufferData(GL_ARRAY_BUFFER, cap * sizeof(i32), iota_buf, GL_STATIC_DRAW);
+
+        free(iota_buf);
+    } glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glGenVertexArrays(1, &graphics_sys.iota_vao);
-    glBindVertexArray(graphics_sys.iota_vao);
+    glBindVertexArray(graphics_sys.iota_vao); {
+        glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
+        glVertexAttribIPointer(0, 1, GL_INT, sizeof(i32), (void*)0);
+        glVertexAttribDivisor(0, 1);
+        glEnableVertexAttribArray(0);
+    } glBindVertexArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
-    glEnableVertexAttribArray(0);
-    glVertexAttribIPointer(0, 1, GL_INT, sizeof(i32), (void*)0);
-    glVertexAttribDivisor(0, 1);
-
-    // depth
+    // enable gl stuffs
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-
-    // draw instances
-    graphics_sys.instance_buf_mapped = (InstanceDataGPU*)arena_alloc(omni_arena_ptr, draw_instance_cap * sizeof(InstanceDataGPU));
-    graphics_sys.draw_instance_list = (DrawInstance*)arena_alloc(omni_arena_ptr, draw_instance_cap * sizeof(DrawInstance));
-    graphics_sys.draw_instance_cap = draw_instance_cap;
 }
 
+void graphics_update();
+void graphics_upload_to_gpu();
+
 void graphics_draw() {
-    glUseProgram(graphics_sys.program);
-    glBindVertexArray(graphics_sys.iota_vao);
-
     // bind buffers
-    glBindBufferBase(GL_UNIFORM_BUFFER, FRAME_CONSTANT_BIND_IDX, graphics_sys.frame_constant_uniform);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, INSTANCE_BUF_BIND_IDX, graphics_sys.instance_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_VERTEX_BUF_BIND_IDX, mesh_sys.mesh_vertex_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_INDEX_BUF_BIND_IDX, mesh_sys.mesh_index_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MATERIAL_BUF_BIND_IDX, material_sys.material_buf);
+    glBindBufferBase(GL_UNIFORM_BUFFER, FRAME_CONSTANT_UNIFORM_BIND_IDX, graphics_sys.frame_constant_gpu_uniform);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, OBJECT_LIST_BIND_IDX, object3d_sys.object_gpu_list);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_VERTEX_BUF_BIND_IDX, mesh_sys.vertex_gpu_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_INDEX_BUF_BIND_IDX, mesh_sys.index_gpu_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MATERIAL_LIST_BIND_IDX, material_sys.material_gpu_list);
 
-    // frame constant: view, projection
-    Mat4 proj = mat4_perspective(
-        graphics_sys.view_fov,
-        graphics_sys.view_size.x / graphics_sys.view_size.y,
-        graphics_sys.view_range.x,
-        graphics_sys.view_range.y
-    );
-
-    Vec3 f = vec3_normalize(graphics_sys.view_center - graphics_sys.view_eye);
-    Vec3 r = vec3_normalize(vec3_cross(f, graphics_sys.view_up));
-    Vec3 u = vec3_cross(r, f);
-    Mat4 view = MAT4_IDENTITY;
-    view.raw[0][0] =  r.x; view.raw[1][0] =  r.y; view.raw[2][0] =  r.z; view.raw[3][0] = -vec3_dot(r, graphics_sys.view_eye);
-    view.raw[0][1] =  u.x; view.raw[1][1] =  u.y; view.raw[2][1] =  u.z; view.raw[3][1] = -vec3_dot(u, graphics_sys.view_eye);
-    view.raw[0][2] = -f.x; view.raw[1][2] = -f.y; view.raw[2][2] = -f.z; view.raw[3][2] =  vec3_dot(f, graphics_sys.view_eye);
-
-    FrameConstantGPU frame_constant = {
-        .view_matrix = view,
-        .projection_matrix = proj,
-        .eye_pos = graphics_sys.view_eye
-    };
-
-    // update buffers
-    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_uniform);
-    glBufferSubData(
-        GL_UNIFORM_BUFFER,
-        0,
-        sizeof(FrameConstantGPU),
-        &frame_constant
-    );
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    // FIXME maybe this should be on GPU
-    for (i32 i = 0; i < graphics_sys.draw_instance_num; i++) {
-        DrawInstance draw_instance = graphics_sys.draw_instance_list[i];
-        MeshMeta mesh_meta = mesh_get_meta(draw_instance.mesh_idx);
-        graphics_sys.instance_buf_mapped[i] = {
-            .mesh_vertex_offset = mesh_meta.mesh_vertex_offset,
-            .mesh_index_offset = mesh_meta.mesh_index_offset,
-            .material_offset = draw_instance.material_idx,
-            .model_matrix = mat4_translation(draw_instance.position) *
-                            mat4_rotation(draw_instance.rotation) *
-                            mat4_scale(draw_instance.scale)
-        };
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, graphics_sys.instance_buf);
-    glBufferSubData(
-        GL_SHADER_STORAGE_BUFFER,
-        0,
-        graphics_sys.draw_instance_num * sizeof(InstanceDataGPU),
-        graphics_sys.instance_buf_mapped
-    );
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    graphics_update();
+    graphics_upload_to_gpu();
 
     // draw
-    for (i32 i = 0; i < graphics_sys.draw_instance_num; i++) {
-        DrawInstance draw_instance = graphics_sys.draw_instance_list[i];
-        MeshMeta mesh_meta = mesh_get_meta(draw_instance.mesh_idx);
+    glUseProgram(graphics_sys.gpu_program);
+    glBindVertexArray(graphics_sys.iota_vao); {
+        for (i32 i = 0; i < object3d_sys.draw_object_num; i++) {
+            i32 indices_num = *list_get(&object3d_sys.draw_object_indices_num_list, i);
+            glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, indices_num, 1, i);
+        }
+    } glBindVertexArray(0);
+      glUseProgram(0);
+}
 
-        // glDrawArrays(GL_TRIANGLES, 0, mesh_meta.indices_num);
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, mesh_meta.indices_num, 1, i);
-    }
+void graphics_update() {
+    // frame constant
+    FrameConstant frame_constant = graphics_sys.frame_constant;
+
+    Mat4 proj = mat4_perspective(
+        frame_constant.view_fov,
+        frame_constant.view_size.x / frame_constant.view_size.y,
+        frame_constant.view_range.x,
+        frame_constant.view_range.y
+    );
+
+    Vec3 f = vec3_normalize(frame_constant.view_center - frame_constant.view_eye);
+    Vec3 r = vec3_normalize(vec3_cross(f, frame_constant.view_up));
+    Vec3 u = vec3_cross(r, f);
+    Mat4 view = MAT4_IDENTITY;
+    view.raw[0][0] =  r.x; view.raw[1][0] =  r.y; view.raw[2][0] =  r.z; view.raw[3][0] = -vec3_dot(r, frame_constant.view_eye);
+    view.raw[0][1] =  u.x; view.raw[1][1] =  u.y; view.raw[2][1] =  u.z; view.raw[3][1] = -vec3_dot(u, frame_constant.view_eye);
+    view.raw[0][2] = -f.x; view.raw[1][2] = -f.y; view.raw[2][2] = -f.z; view.raw[3][2] =  vec3_dot(f, frame_constant.view_eye);
+
+    graphics_sys.frame_constant_gpu_map = {
+        .view_matrix = view,
+        .projection_matrix = proj,
+        .eye_pos = frame_constant.view_eye
+    };
+
+    //
+    material_update();
+    object3d_update();
+}
+
+void graphics_upload_to_gpu() {
+    // frame constant
+    glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_gpu_uniform); {
+        glBufferSubData(GL_UNIFORM_BUFFER,
+                        0, sizeof(FrameConstantGPUMap),
+                        &graphics_sys.frame_constant_gpu_map);
+    } glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    //
+    material_upload_to_gpu();
+    object3d_upload_to_gpu();
 }
 
 }

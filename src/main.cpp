@@ -15,34 +15,42 @@ using namespace asapage;
 int main() {
     engine_init();
 
-    mesh_load(file_asset_path("monkey.glb").c_str());
-    mesh_load(file_asset_path("box.glb").c_str());
+    MeshKey monkey_mesh_key, box_mesh_key;
+    mesh_load(file_asset_path("monkey.glb").c_str(), &monkey_mesh_key);
+    mesh_load(file_asset_path("box.glb").c_str(), &box_mesh_key);
 
-    material_load((Vec4){1, 0, 0, 1});
-    material_load((Vec4){0, 1, 0, 1});
+    MaterialDesc material_desc = { .albedo = { 1, 0, 0 } };
+    MaterialKey material_key = material_create(&material_desc);
 
-    graphics_sys.draw_instance_list[graphics_sys.draw_instance_num++] = {
-        .position = { 0, 0, 0 },
-        .rotation = { 0, 0, 0, 1 },
-        .scale = { 1, 1, 1 },
-        .mesh_idx = 1,
-        .material_idx = 1
-    };
+    Object3DDesc object_desc = { .material_key = material_key, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
+    object_desc.mesh_key = monkey_mesh_key; {
+        object_desc.pos = { 0, 0, 0 };
+        object3d_create(&object_desc);
 
-    graphics_sys.draw_instance_list[graphics_sys.draw_instance_num++] = {
-        .position = { 2, 0, 2 },
-        .rotation = { 0, 0, 0, 1 },
-        .scale = { 1, 2, 1 },
-        .mesh_idx = 2,
-        .material_idx = 2
-    };
+        object_desc.pos = { 2, 0, 0 };
+        object3d_create(&object_desc);
 
-    graphics_sys.view_size = { (f32)screen_width, (f32)screen_height };
-    graphics_sys.view_range = { 0.1, 100 };
-    graphics_sys.view_eye = { 0, 15, 10 };
-    graphics_sys.view_center = { 0, 0, 0 };
-    graphics_sys.view_up = { 0, 1, 0 };
-    graphics_sys.view_fov = 60 * MATH_DEG_TO_RAD;
+        object_desc.pos = { -2, 0, 0 };
+        object3d_create(&object_desc);
+    }
+    object_desc.mesh_key = box_mesh_key; {
+        object_desc.pos = { 0, -2, 0 };
+        object3d_create(&object_desc);
+
+        object_desc.pos = { 1, -2, 0 };
+        object3d_create(&object_desc);
+
+        object_desc.pos = { -1, -2, 0 };
+        object3d_create(&object_desc);
+    }
+
+    FrameConstant *frame_constant = &graphics_sys.frame_constant;
+    frame_constant->view_size = { (f32)screen_width, (f32)screen_height };
+    frame_constant->view_range = { 0.1, 100 };
+    frame_constant->view_eye = { 0, 15, 10 };
+    frame_constant->view_center = { 0, 0, 0 };
+    frame_constant->view_up = { 0, 1, 0 };
+    frame_constant->view_fov = 60 * MATH_DEG_TO_RAD;
 
     while (engine_on_frame()) {
         while (engine_on_tick()) {

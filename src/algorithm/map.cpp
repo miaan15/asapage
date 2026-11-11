@@ -50,7 +50,7 @@ template <typename T> i32 map_calc_probe_num(Map<T> *map, i32 from_idx, i32 to_i
 
 template <typename T> T *map_create(Map<T> *map, u64 key, T *instance_data = nullptr) {
     if (map->len >= map->cap) {
-        log_err("map_create: create too much -> stub");
+        log_err("map_create: create too much -> stub: len = [%d]", map->len);
         return map_stub(map);
     }
 
@@ -167,7 +167,10 @@ template <typename T> T *map_get(Map<T> *map, u64 key) {
     while (true) {
         MapMeta meta = map->meta_buf[idx];
 
-        if (!meta.is_alive || meta.probe_num < cur_probe_num) { return map_stub(map); }
+        if (!meta.is_alive || meta.probe_num < cur_probe_num) {
+            log_err("map_get(): try to get not existed/dead key -> stub: key = [%lu]", key);
+            return map_stub(map);
+        }
 
         if (meta.key == key) { return &map->data_buf[idx]; }
 

@@ -28,21 +28,35 @@ template <typename T> T *list_stub(List<T> *list) {
     return &list->buf[0];
 }
 
-template <typename T> T *list_create(List<T> *list, T data = {}) {
+template <typename T> i32 list_create(List<T> *list, T *data = nullptr, T **out_instance = nullptr) {
     if (list->len >= list->cap) {
-        log_err("list_create: create too much -> stub");
-        return list_stub(list);
+        log_err("list_create: create too much -> stub: len = [%d]", list->len);
+        if (out_instance != nullptr) { *out_instance = list_stub(list); }
+        return 0;
     }
 
-    T *res = &list->buf[list->len];
-    mem_copy(res, &data, sizeof(T));
+    i32 idx = list->len;
+    T *ptr = &list->buf[idx];
+    if (data == nullptr) { mem_zero(ptr, sizeof(T)); }
+    else { mem_copy(ptr, data, sizeof(T)); }
 
     if (list->offset_of_idx_field >= 0) {
-        mem_copy((char*)res + list->offset_of_idx_field, list->len, sizeof(u64));
+        mem_copy((char*)ptr + list->offset_of_idx_field, &list->len, sizeof(i32));
     }
 
     list->len++;
-    return res;
+
+    if (out_instance != nullptr) { *out_instance = ptr; }
+
+    return idx;
+}
+
+template <typename T> T *list_get(List<T> *list, i32 idx) {
+    if (idx <= 0 || idx >= list->len) {
+        log_err("list_get(): try to get out of bounds idx -> stub: idx = [%d]", idx);
+        return list_stub(list);
+    }
+    return &list->buf[idx];
 }
 
 template <typename T> void list_reset(List<T> *list) {

@@ -1,4 +1,4 @@
-layout(location = 0) flat in int i_instance_idx;
+layout(location = 0) flat in int i_object_idx;
 layout(location = 1) in vec3 i_world_pos;
 layout(location = 2) flat in vec3 i_normal;
 layout(location = 3) in vec2 i_uv;
@@ -6,9 +6,9 @@ layout(location = 3) in vec2 i_uv;
 layout(location = 0) out vec4 FragColor;
 
 void main() {
-    InstanceData instance = instance_buf[i_instance_idx];
+    ObjectData object = object_list[i_object_idx];
 
-    Material material = material_buf[instance.material_offset];
+    Material material = material_list[object.material_idx];
 
     // FIXME
     vec3 light_pos = vec3(5, 10, 5);

@@ -12,70 +12,73 @@ import internal;
 import file;
 import log;
 import math;
+import list;
 
 export namespace asapage {
 
-struct MeshVertexGPU {
-    Vec3 pos;
-    float _pad0;
-    Vec3 normal;
-    float _pad1;
-    Vec2 uv;
-    Vec2 _pad2;
+struct MeshKey {
+    union {
+        u64 raw;
+        struct {
+            i32 idx;
+            u32 _reserve;
+        };
+    };
 };
 
-constexpr i32 MESH_MAX_MESH_NUM = 1024;
-constexpr usize MESH_MAX_MESH_VERTEX_BUF_SIZE = 100 << 20; // 100MB
-constexpr usize MESH_MAX_MESH_INDEX_BUF_SIZE = 100 << 20; // 100MB
-
 struct MeshMeta {
-    i32 mesh_vertex_offset;
-    i32 mesh_index_offset;
+    i32 vertex_offset;
+    i32 index_offset;
     i32 indices_num;
 };
 
+struct MeshVertexGPUMap {
+    Vec3 pos;
+    Vec3 normal;
+    Vec2 uv;
+};
+
+constexpr usize MESH_VERTEX_BUF_SIZE_DEFAULT = 100 << 20; // 100MB
+constexpr usize MESH_INDEX_BUF_SIZE_DEFAULT = 100 << 20; // 100MB
+constexpr i32 MESH_CAP_DEFAULT = 1024;
+
 struct MeshSys {
-    GLuint mesh_vertex_buf;
-    GLuint mesh_index_buf;
+    GLuint vertex_gpu_buf;
+    i32 vertex_gpu_buf_offset;
 
-    i32 loaded_mesh_vertex_num;
-    i32 loaded_mesh_index_num;
+    GLuint index_gpu_buf;
+    i32 index_gpu_buf_offset;
 
-    MeshMeta *mesh_meta_list;
-    i32 mesh_num;
-    i32 mesh_cap;
+    List<MeshMeta> meta_list;
 };
 inline MeshSys mesh_sys = {};
 
-MeshMeta mesh_get_meta(i32 idx) {
-    return mesh_sys.mesh_meta_list[idx];
+void mesh_sys_init(i32 mesh_cap = MESH_CAP_DEFAULT,
+                   usize mesh_vertex_buf_size = MESH_VERTEX_BUF_SIZE_DEFAULT,
+                   usize mesh_index_buf_size = MESH_INDEX_BUF_SIZE_DEFAULT) {
+    glGenBuffers(1, &mesh_sys.vertex_gpu_buf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.vertex_gpu_buf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, mesh_vertex_buf_size, nullptr, GL_DYNAMIC_DRAW);
+
+    glGenBuffers(1, &mesh_sys.index_gpu_buf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.index_gpu_buf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, mesh_index_buf_size, nullptr, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    list_init(&mesh_sys.meta_list, omni_arena_ptr, mesh_cap);
+
+    // TODO make a stub that maybe like Valve's "ERROR"
 }
 
-void mesh_sys_init(i32 mesh_cap = MESH_MAX_MESH_NUM,
-                   usize max_mash_vertex_buf_size = MESH_MAX_MESH_VERTEX_BUF_SIZE,
-                   usize max_mash_index_buf_size = MESH_MAX_MESH_INDEX_BUF_SIZE) {
-    glGenBuffers(1, &mesh_sys.mesh_vertex_buf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_vertex_buf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, max_mash_vertex_buf_size, nullptr, GL_DYNAMIC_DRAW);
+MeshKey material_stub() { return MeshKey{0}; }
 
-    glGenBuffers(1, &mesh_sys.mesh_index_buf);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_index_buf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, max_mash_index_buf_size, nullptr, GL_DYNAMIC_DRAW);
-
-    mesh_sys.mesh_meta_list = (MeshMeta*)arena_alloc(omni_arena_ptr, mesh_cap * sizeof(MeshMeta));
-    mesh_sys.mesh_cap = mesh_cap;
-
-    // stub
-    mesh_sys.mesh_num = 1;
-    // TODO a stub mesh (idk, maybe a big 'ERROR' like valve)
-}
-
-void mesh_load(const char *path) {
+void mesh_load(const char *path, MeshKey *out_mesh_key_list) {
     cgltf_options load_model_options = {};
     cgltf_data *model_data = nullptr;
 
     if (cgltf_parse_file(&load_model_options, path, &model_data) != cgltf_result_success) {
-        log_err("mesh load: failed to parse: path = [%s]", path);
+        log_err("mesh_load(): failed to parse from path: path = [%s]", path);
         return;
     }
     if (cgltf_load_buffers(&load_model_options, model_data, path) != cgltf_result_success) {
@@ -84,16 +87,11 @@ void mesh_load(const char *path) {
         return;
     }
 
-    // a model can contains many meshes
+    // a model can contains many meshes, so that loading a model can load many meshes
     for (cgltf_size _i = 0; _i < model_data->meshes_count; _i++) {
-        if (mesh_sys.mesh_num >= mesh_sys.mesh_cap) {
-            log_err("mesh_load: too many mesh: num = [%d]", mesh_sys.mesh_num);
-            return;
-        }
-
         cgltf_mesh *mesh = &model_data->meshes[_i];
 
-        // cal total vertex and index in a mesh
+        // calculate total vertex and index in a mesh
         i32 total_vertex_num = 0;
         i32 total_index_num = 0;
         for (cgltf_size i = 0; i < mesh->primitives_count; i++) {
@@ -111,8 +109,8 @@ void mesh_load(const char *path) {
             }
         }
 
-        // buffer that map to GPU buffer
-        auto *mesh_vertex_buf_mapped_buf = (MeshVertexGPU*)malloc(total_vertex_num * sizeof(MeshVertexGPU));
+        // make buffers that will be map to GPU buffers
+        auto *mesh_vertex_buf_mapped_buf = (MeshVertexGPUMap*)malloc(total_vertex_num * sizeof(MeshVertexGPUMap));
         auto *mesh_index_buf_mapped_buf = (i32*)malloc(total_index_num * sizeof(i32));
 
         // populate map buffer
@@ -142,7 +140,7 @@ void mesh_load(const char *path) {
             // there might be no normal/uv/index, by that, keep the default value
             i32 vertices_num = pos_accessor->count;
             for (i32 v = 0; v < vertices_num; v++) {
-                MeshVertexGPU _vertex = {
+                MeshVertexGPUMap _vertex = {
                     .pos = { 0, 0, 0 },
                     .normal = { 0, 1, 0 },
                     .uv = { 0, 0 }
@@ -170,47 +168,53 @@ void mesh_load(const char *path) {
         }
 
         // upload to GPU
-        i32 mesh_vertex_offset = mesh_sys.loaded_mesh_vertex_num;
-        usize mesh_vertex_buf_bytes_offset = mesh_vertex_offset * sizeof(MeshVertexGPU);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.mesh_vertex_buf);
+        i32 mesh_vertex_offset = mesh_sys.vertex_gpu_buf_offset;
+        usize mesh_vertex_buf_bytes_offset = mesh_vertex_offset * sizeof(MeshVertexGPUMap);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.vertex_gpu_buf);
         glBufferSubData(
             GL_SHADER_STORAGE_BUFFER,
             mesh_vertex_buf_bytes_offset,
-            total_vertex_num * sizeof(MeshVertexGPU),
+            total_vertex_num * sizeof(MeshVertexGPUMap),
             mesh_vertex_buf_mapped_buf
         );
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-        i32 mesh_index_offset = mesh_sys.loaded_mesh_index_num;
+        i32 mesh_index_offset = mesh_sys.index_gpu_buf_offset;
         usize mesh_index_buf_bytes_offset = mesh_index_offset * sizeof(i32);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_sys.mesh_index_buf);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_sys.index_gpu_buf);
         glBufferSubData(
             GL_ELEMENT_ARRAY_BUFFER,
             mesh_index_buf_bytes_offset,
             total_index_num * sizeof(i32),
             mesh_index_buf_mapped_buf
         );
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         free(mesh_vertex_buf_mapped_buf);
         free(mesh_index_buf_mapped_buf);
 
-        i32 mesh_idx = mesh_sys.mesh_num;
+        //
+        mesh_sys.vertex_gpu_buf_offset += total_vertex_num;
+        mesh_sys.index_gpu_buf_offset += total_index_num;
 
-        mesh_sys.mesh_meta_list[mesh_idx] = {
-            .mesh_vertex_offset = mesh_vertex_offset,
-            .mesh_index_offset  = mesh_index_offset,
-            .indices_num        = total_index_num
-        };
+        MeshMeta new_meta_data = { .vertex_offset = mesh_vertex_offset,
+                                   .index_offset = mesh_index_offset,
+                                   .indices_num = total_index_num };
+        i32 new_meta_idx = list_create(&mesh_sys.meta_list, &new_meta_data);
 
-        mesh_sys.loaded_mesh_vertex_num += total_vertex_num;
-        mesh_sys.loaded_mesh_index_num += total_index_num;
+        MeshKey key = { .idx = new_meta_idx };
 
-        mesh_sys.mesh_num++;
+        out_mesh_key_list[_i] = key;
 
-        log_debug("Load mesh [%d]: path = [%s]; vertex_num = [%d]; triangle_num = [%d]; vertex_offset = [%d]; index_offset = [%d]",
-                  mesh_idx, path, total_vertex_num, total_index_num / 3, mesh_vertex_offset, mesh_index_offset);
+        log_debug("Created Mesh [%d]: path = [%s]; vertex_num = [%d]; triangle_num = [%d]; vertex_offset = [%d]; index_offset = [%d]",
+                  key.idx, path, total_vertex_num, total_index_num / 3, mesh_vertex_offset, mesh_index_offset);
     }
 
     cgltf_free(model_data);
+}
+
+MeshMeta mesh_get_meta(MeshKey key) {
+    return *list_get(&mesh_sys.meta_list, key.idx);
 }
 
 }

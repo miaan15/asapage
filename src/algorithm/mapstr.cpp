@@ -75,7 +75,7 @@ template <typename T> i32 mapstr_calc_probe_num(MapStr<T> *mapstr, i32 from_idx,
 
 template <typename T> T *mapstr_create(MapStr<T> *mapstr, const char *key, T *instance_data = nullptr) {
     if (mapstr->len >= mapstr->cap) {
-        log_debug("mapstr_create: create too much -> stub");
+        log_debug("mapstr_create: create too much -> stub: len = [%d]", mapstr->len);
         return mapstr_stub(mapstr);
     }
 
@@ -196,7 +196,10 @@ template <typename T> T *mapstr_get(MapStr<T> *mapstr, const char *key) {
     while (true) {
         MapStrMeta meta = mapstr->meta_buf[idx];
 
-        if (!meta.is_alive || meta.probe_num < cur_probe_num) { return mapstr_stub(mapstr); }
+        if (!meta.is_alive || meta.probe_num < cur_probe_num) {
+            log_err("mapstr_get(): try to get not existed/dead key -> stub: key = [%s]", key);
+            return mapstr_stub(mapstr);
+        }
 
         if (mapstr_match_key(meta.key, key)) { return &mapstr->data_buf[idx]; }
 
