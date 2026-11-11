@@ -43,13 +43,6 @@ struct GraphicsSysDesc {
 
     i32 object_cap;
 };
-// constexpr GraphicsSysDesc GRAPHICS_SYS_DESC_DEFAULT = {
-//     .mesh_cap = MESH_CAP_DEFAULT,
-//     .mesh_vertex_buf_size = MESH_VERTEX_BUF_SIZE_DEFAULT,
-//     .mesh_index_buf_size = MESH_INDEX_BUF_SIZE_DEFAULT,
-//     .material_cap = MATERIAL_CAP_DEFAULT,
-//     .object_cap = OBJECT3D_CAP_DEFAULT,
-// };
 
 struct GraphicsSys {
     GLuint gpu_program;
@@ -157,6 +150,9 @@ void graphics_draw() {
         }
     } glBindVertexArray(0);
       glUseProgram(0);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) { log_err("GL error: %d", err); }
 }
 
 void graphics_update() {

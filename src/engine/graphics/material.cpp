@@ -30,8 +30,9 @@ struct Material {
 
 using MaterialDesc = Material;
 
-struct alignas(16) MaterialGPUMap {
+struct MaterialGPUMap {
     Vec3 albedo;
+    f32 _pad0;
 };
 
 constexpr i32 MATERIAL_CAP_DEFAULT = 1024;
@@ -41,6 +42,7 @@ struct MaterialSys {
 
     List<Material> material_list;
     List<MaterialGPUMap> material_gpu_map_list;
+    i32 material_num;
 };
 inline MaterialSys material_sys = {};
 
@@ -64,8 +66,10 @@ MaterialKey material_create(MaterialDesc *desc = nullptr, Material *out_material
     else { mem_zero(&new_material_data, sizeof(Material)); }
 
     i32 idx = list_create(&material_sys.material_list, &new_material_data, &out_material);
+    list_create(&material_sys.material_gpu_map_list);
+    material_sys.material_num++;
 
-    log_debug("Created Material [%d]: albeno = [%.1f, %.1f, %.1f]", desc->albedo.x, desc->albedo.y, desc->albedo.z);
+    log_debug("Created Material [%d]: albeno = [%.1f, %.1f, %.1f]", idx, desc->albedo.x, desc->albedo.y, desc->albedo.z);
 
     return (MaterialKey){.idx = idx};
 }
@@ -81,13 +85,13 @@ Material *material_get(MaterialKey key) {
 void material_upload_to_gpu() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, material_sys.material_gpu_list); {
         glBufferSubData(GL_SHADER_STORAGE_BUFFER,
-                        0, material_sys.material_gpu_map_list.len * sizeof(MaterialGPUMap),
-                        &material_sys.material_gpu_map_list);
+                        0, material_sys.material_num * sizeof(MaterialGPUMap),
+                        material_sys.material_gpu_map_list.buf);
     } glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void material_update() {
-    for (i32 i = 1; i < material_sys.material_list.len; i++) {
+    for (i32 i = 0; i < material_sys.material_num; i++) {
         Material *material = list_get(&material_sys.material_list, i);
         MaterialGPUMap *material_gpu_map = list_get(&material_sys.material_gpu_map_list, i);
 

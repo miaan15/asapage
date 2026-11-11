@@ -6,7 +6,7 @@ layout(location = 3) in vec2 i_uv;
 layout(location = 0) out vec4 FragColor;
 
 void main() {
-    ObjectData object = object_list[i_object_idx];
+    Object object = object_list[i_object_idx];
 
     Material material = material_list[object.material_idx];
 
@@ -17,8 +17,8 @@ void main() {
     vec3 reflected_dir = reflect(-light_dir, i_normal);
     vec3 view_dir = normalize(frame_constant.eye_pos - i_world_pos);
 
-    vec3 ambient_color = material.base_color.xyz * 0.1;
-    vec3 diffuse_color = max(0, dot(light_dir, i_normal)) * material.base_color.xyz * 0.5;
+    vec3 ambient_color = material.albedo * 0.1;
+    vec3 diffuse_color = max(0, dot(light_dir, i_normal)) * material.albedo * 0.5;
     vec3 specular_color = pow(max(0, dot(reflected_dir, view_dir)), 1) * vec3(1) * 0.5;
 
     FragColor = vec4(ambient_color + (diffuse_color + specular_color) * 1, 1);

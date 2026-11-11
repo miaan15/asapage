@@ -35,10 +35,10 @@ GLuint shader_world_object_load(const char *path, const char *header_code, int h
         if (log_len > 0) {
             char *log = (char*)malloc(log_len);
             glGetShaderInfoLog(shader, log_len, nullptr, log);
-            log_err("shader_load: compilation failed: path = [%s]:\n%s", path, log);
+            log_err("shader_load(): compilation failed: path = [%s]:\n%s", path, log);
             free(log);
         } else {
-            log_err("shader_load: compilation failed: unknown error: path = [%s]", log, path);
+            log_err("shader_load(): compilation failed: unknown error: path = [%s]", log, path);
         }
 
         glDeleteShader(shader);

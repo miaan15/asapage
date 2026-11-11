@@ -34,8 +34,12 @@ struct MeshMeta {
 
 struct MeshVertexGPUMap {
     Vec3 pos;
+    f32 _pad0;
     Vec3 normal;
+    f32 _pad1;
     Vec2 uv;
+    f32 _pad2;
+    f32 _pad3;
 };
 
 constexpr usize MESH_VERTEX_BUF_SIZE_DEFAULT = 100 << 20; // 100MB

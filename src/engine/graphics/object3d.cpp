@@ -54,9 +54,10 @@ struct Object3DDesc {
 struct Object3DGPUMap {
     i32 mesh_vertex_offset;
     i32 mesh_index_offset;
-    i32 mesh_indices_num;
 
     i32 material_idx;
+
+    f32 _pad0;
 
     Mat4 model_matrix; // maybe should not matrix from the beginning, matrix calculatation should be on GPU
 };
@@ -97,14 +98,14 @@ Object3DKey object3d_create(Object3DDesc *desc = nullptr, Object3D *out_object =
     if (desc != nullptr) {
         new_object_data.pos = desc->pos;
         new_object_data.rot = desc->rot;
-        new_object_data.pos = desc->scale;
+        new_object_data.scale = desc->scale;
         new_object_data.mesh_key = desc->mesh_key;
         new_object_data.material_key = desc->material_key;
     } else { mem_zero(&new_object_data, sizeof(Object3D)); }
 
     PoolKey pool_key = pool_create(&object3d_sys.object_pool, &new_object_data, &out_object);
 
-    log_debug("Created Object3D [%d:%d]: mesh_key = [%d]; material_key = [%d], pos = [%.1f, %.1f]; rot = [%.1f, %.1f, %.1f, %.1f]; scale = [%.1f, %.1f, %.1f]",
+    log_debug("Created Object3D [%d:%d]: mesh_key = [%d]; material_key = [%d], pos = [%.1f, %.1f, %.1f]; rot = [%.1f, %.1f, %.1f, %.1f]; scale = [%.1f, %.1f, %.1f]",
               pool_key.idx, pool_key.validate, desc->mesh_key.idx, desc->material_key.idx,
               desc->pos.x, desc->pos.y, desc->pos.z,
               desc->rot.x, desc->rot.y, desc->rot.z, desc->rot.w,
@@ -122,7 +123,7 @@ void object3d_upload_to_gpu() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, object3d_sys.object_gpu_list); {
         glBufferSubData(GL_SHADER_STORAGE_BUFFER,
                         0, object3d_sys.draw_object_gpu_map_list.len * sizeof(Object3DGPUMap),
-                        &object3d_sys.draw_object_gpu_map_list);
+                        object3d_sys.draw_object_gpu_map_list.buf);
     } glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
@@ -139,7 +140,6 @@ void object3d_update() {
         Object3DGPUMap object_gpu_map = {
             .mesh_vertex_offset = object_mesh_meta.vertex_offset,
             .mesh_index_offset = object_mesh_meta.index_offset,
-            .mesh_indices_num = object_mesh_meta.indices_num,
 
             .material_idx = iter_object->material_key.idx,
 

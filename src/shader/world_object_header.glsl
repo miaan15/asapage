@@ -11,11 +11,13 @@ layout(std140, binding = 0) uniform FrameConstant {
 struct Object {
     int mesh_vertex_offset;
     int mesh_index_offset;
+
     int material_idx;
+
     mat4 model_matrix;
 };
 layout(std430, binding = 1) readonly buffer InstanceBuf {
-    InstanceData object_list[];
+    Object object_list[];
 };
 
 // mesh
