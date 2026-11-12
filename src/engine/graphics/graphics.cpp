@@ -15,6 +15,7 @@ import mem;
 import internal;
 import math;
 import log;
+import list;
 
 export namespace asapage {
 
@@ -122,9 +123,9 @@ void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
         glEnableVertexAttribArray(0);
     } glBindVertexArray(0);
 
-    // enable gl stuffs
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    // // enable gl stuffs
+    // glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_LESS);
 }
 
 void _graphics_update_frame();
@@ -146,10 +147,10 @@ void graphics_draw() {
     glBindVertexArray(graphics_sys.iota_vao); {
         for (i32 i = 0; i < object3d_sys.draw_object_num; i++) {
             i32 indices_num = *list_get(&object3d_sys.draw_object_indices_num_list, i);
-            glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, indices_num, 1, i);
+            glBindVertexBuffer(0, graphics_sys.iota_vbo, i * sizeof(i32), sizeof(i32));
+            glDrawArraysInstanced(GL_TRIANGLES, 0, indices_num, 1);
         }
     } glBindVertexArray(0);
-      glUseProgram(0);
 
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) { log_err("GL error: %d", err); }

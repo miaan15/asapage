@@ -16,7 +16,7 @@ struct Object {
 
     mat4 model_matrix;
 };
-layout(std430, binding = 1) readonly buffer InstanceBuf {
+layout(std430, binding = 1) readonly buffer ObjectBuf {
     Object object_list[];
 };
 

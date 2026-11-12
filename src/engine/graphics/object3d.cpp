@@ -114,6 +114,10 @@ Object3DKey object3d_create(Object3DDesc *desc = nullptr, Object3D *out_object =
         new_object_data.last_tick_pos = desc->pos;
         new_object_data.last_tick_rot = desc->rot;
         new_object_data.last_tick_scale = desc->scale;
+
+        new_object_data.frame_pos = desc->pos;
+        new_object_data.frame_rot = desc->rot;
+        new_object_data.frame_scale = desc->scale;
     } else { mem_zero(&new_object_data, sizeof(Object3D)); }
 
     PoolKey pool_key = pool_create(&object3d_sys.object_pool, &new_object_data, &out_object);

@@ -185,14 +185,14 @@ void mesh_load(const char *path, MeshKey *out_mesh_key_list) {
 
         i32 mesh_index_offset = mesh_sys.index_gpu_buf_offset;
         usize mesh_index_buf_bytes_offset = mesh_index_offset * sizeof(i32);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_sys.index_gpu_buf);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mesh_sys.index_gpu_buf);
         glBufferSubData(
-            GL_ELEMENT_ARRAY_BUFFER,
+            GL_SHADER_STORAGE_BUFFER,
             mesh_index_buf_bytes_offset,
             total_index_num * sizeof(i32),
             mesh_index_buf_mapped_buf
         );
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         free(mesh_vertex_buf_mapped_buf);
         free(mesh_index_buf_mapped_buf);

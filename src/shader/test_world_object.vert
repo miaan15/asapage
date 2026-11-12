@@ -7,19 +7,16 @@ layout(location = 2) flat out vec3 o_normal;
 layout(location = 3) out vec2 o_uv;
 
 void main() {
-    Object object = object_list[i_object_idx];
+    const vec2 pos[3] = vec2[3](
+        vec2(-0.5, -0.5),
+        vec2( 0.5, -0.5),
+        vec2( 0.0,  0.5)
+    );
 
-    int mesh_index = mesh_index_buf[object.mesh_index_offset + gl_VertexID];
-    MeshVertex vertex = mesh_vertex_buf[object.mesh_vertex_offset + mesh_index];
+    int id = gl_VertexID % 3;
+    gl_Position = vec4(pos[id], 0.0, 1.0);
 
-    vec4 world_pos = object.model_matrix * vec4(vertex.pos, 1);
-    vec4 view_pos = frame_constant.view_matrix * world_pos;
-    vec4 clip_pos = frame_constant.projection_matrix * view_pos;
-
-    gl_Position = clip_pos;
-
-    o_object_idx = i_object_idx;
-    o_world_pos = world_pos.xyz;
-    o_normal = mat3(object.model_matrix) * vertex.normal; // only work with orthogonal transform, which it is here
-    o_uv = vertex.uv;
-}
+    o_object_idx = 0;
+    o_world_pos  = vec3(pos[id], 0.0);
+    o_normal     = vec3(0.0, 0.0, 1.0);
+    o_uv         = pos[id] * 0.5 + 0.5;}

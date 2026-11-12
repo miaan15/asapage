@@ -86,6 +86,7 @@ function(build_vendor_lib lib_name out_cmake_dir)
 endfunction()
 
 build_vendor_lib(raylib RAYLIB_CMAKE_DIR
+    -GNinja
     -DBUILD_EXAMPLES=OFF
     -DGRAPHICS=GRAPHICS_API_OPENGL_43
     -DPLATFORM=Desktop -DGLFW_BUILD_WAYLAND=ON -DGLFW_BUILD_X11=ON

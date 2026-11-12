@@ -26,8 +26,8 @@ GLuint shader_world_object_load(const char *path, const char *header_code, int h
     glShaderSource(shader, 2, code_ptrs, code_lens);
     glCompileShader(shader);
 
-    bool success = 0;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, (GLint*)&success);
+    GLint success = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         i32 log_len = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_len);

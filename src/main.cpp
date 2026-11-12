@@ -42,8 +42,8 @@ int main() {
     frame_constant->view_up = { 0, 1, 0 };
     frame_constant->view_fov = 60 * MATH_DEG_TO_RAD;
 
-    constexpr i32 TEST_WIDTH = 50;
-    constexpr i32 TEST_HEIGHT = 50;
+    constexpr i32 TEST_WIDTH = 5;
+    constexpr i32 TEST_HEIGHT = 5;
     constexpr f32 TEST_DISTANE = 3;
     Object3DKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
     Object3DDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
