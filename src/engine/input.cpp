@@ -7,6 +7,7 @@ export module input;
 import define;
 import mem;
 import internal;
+import log;
 
 export namespace asapage {
 
@@ -142,6 +143,7 @@ constexpr int INPUT_MAX_KEYBOARD_KEY_NUM = 512;
 // # this was once built on SDL, but now raylib handle most of stuff, so this only has cache left
 struct InputSys {
     u8 *cache_keyboard_state; // state as bitmask: 0-down, 1-on, 2-up
+    u8 *tick_keyboard_state;
     int numkeys;
 };
 inline InputSys input_sys = {};
@@ -153,6 +155,7 @@ constexpr u8 _INPUT_CACHE_UP_STATE = 0b100;
 void input_sys_init() {
     input_sys.numkeys = INPUT_MAX_KEYBOARD_KEY_NUM;
     input_sys.cache_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys * sizeof(u8));
+    input_sys.tick_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys * sizeof(u8));
 }
 
 bool input_is_key_down(SCANCODE scancode) {
@@ -167,42 +170,63 @@ bool input_is_key_up(SCANCODE scancode) {
     return IsKeyReleased((i32)scancode);
 }
 
-bool input_is_key_down_cache(SCANCODE scancode) {
-    u8 cache_state = input_sys.cache_keyboard_state[(usize)scancode];
-    return (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
+bool input_is_key_down_tick(SCANCODE scancode) {
+    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_DOWN_STATE) != 0;
 }
 
-bool input_is_key_on_cache(SCANCODE scancode) {
-    u8 cache_state = input_sys.cache_keyboard_state[(usize)scancode];
-    bool is_cache_key_up = (cache_state & _INPUT_CACHE_UP_STATE) != 0;
-    return ((cache_state & _INPUT_CACHE_ON_STATE) != 0) && !is_cache_key_up;
+bool input_is_key_on_tick(SCANCODE scancode) {
+    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_ON_STATE) != 0;
 }
 
-bool input_is_key_up_cache(SCANCODE scancode) {
-    u8 cache_state = input_sys.cache_keyboard_state[(usize)scancode];
-    bool is_cache_key_down = (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
-    return ((cache_state & _INPUT_CACHE_UP_STATE) != 0) && !is_cache_key_down;
+bool input_is_key_up_tick(SCANCODE scancode) {
+    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_UP_STATE) != 0;
 }
 
-void input_update_cache() {
+void input_update_frame() {
     for (i32 i = 0; i < input_sys.numkeys; i++) {
-        bool is_down = IsKeyPressed(i);
-        bool is_up = IsKeyDown(i);
-        bool is_on = IsKeyReleased(i);
+        bool is_down = input_is_key_down((SCANCODE)i);
+        bool is_on   = input_is_key_on((SCANCODE)i);
+        bool is_up   = input_is_key_up((SCANCODE)i);
         input_sys.cache_keyboard_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
                                              (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
                                              (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
     }
 }
 
+bool _input_cache_is_key_down(usize idx);
+bool _input_cache_is_key_on(usize idx);
+bool _input_cache_is_key_up(usize idx);
+
 // call this after all tick update input request
-void input_reset_cache() {
+void input_update_tick() {
     for (i32 i = 0; i < input_sys.numkeys; i++) {
+        input_sys.tick_keyboard_state[i] = 0;
+        input_sys.tick_keyboard_state[i] |= (_input_cache_is_key_down(i) ? _INPUT_CACHE_DOWN_STATE : 0) |
+                                            (_input_cache_is_key_on(i)   ? _INPUT_CACHE_ON_STATE   : 0) |
+                                            (_input_cache_is_key_up(i)   ? _INPUT_CACHE_UP_STATE   : 0);
+
         // if a key is "down" and "up" before a tick, delay the "up" state for 1 tick so that "down" and "up" not happens in single tick
         input_sys.cache_keyboard_state[i] =
             input_sys.cache_keyboard_state[i] == (_INPUT_CACHE_DOWN_STATE | _INPUT_CACHE_UP_STATE) ?
                 _INPUT_CACHE_UP_STATE : 0;
     }
+}
+
+bool _input_cache_is_key_down(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    return (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
+}
+
+bool _input_cache_is_key_on(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    bool is_cache_key_up = (cache_state & _INPUT_CACHE_UP_STATE) != 0;
+    return ((cache_state & _INPUT_CACHE_ON_STATE) != 0) && !is_cache_key_up;
+}
+
+bool _input_cache_is_key_up(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    bool is_cache_key_down = (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
+    return ((cache_state & _INPUT_CACHE_UP_STATE) != 0) && !is_cache_key_down;
 }
 
 }

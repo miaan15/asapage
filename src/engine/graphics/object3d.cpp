@@ -91,8 +91,6 @@ void object3d_sys_init(i32 object_cap = OBJECT3D_CAP_DEFAULT) {
     // TODO stub is all stub and pos = 0
 }
 
-Object3DKey object3d_stub() { return Object3DKey{0}; }
-
 Object3DKey object3d_create(Object3DDesc *desc = nullptr, Object3D *out_object = nullptr) {
     Object3D new_object_data;
     if (desc != nullptr) {
@@ -117,6 +115,11 @@ Object3DKey object3d_create(Object3DDesc *desc = nullptr, Object3D *out_object =
 bool object3d_destroy(Object3DKey key) {
     PoolKey pool_key = { key.idx, key.validate };
     return pool_destroy(&object3d_sys.object_pool, pool_key);
+}
+
+Object3D *object3d_get(Object3DKey key) {
+    PoolKey pool_key = { key.idx, key.validate };
+    return pool_get(&object3d_sys.object_pool, pool_key);
 }
 
 void object3d_upload_to_gpu() {

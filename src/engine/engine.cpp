@@ -18,8 +18,7 @@ export namespace asapage {
 struct EngineConfigs {
     i32 tps;
 };
-
-EngineConfigs engine_configs = {
+inline EngineConfigs engine_configs = {
     .tps = 20
 };
 
@@ -28,7 +27,7 @@ constexpr i32 DEFAULT_INIT_WINDOW_HEIGHT = 720;
 constexpr usize DEFAULT_OMNI_ARENA_SIZE = 700 << 20; // 700 MB
 constexpr usize DEFAULT_TICK_ARENA_SIZE = 100 << 20; // 100 MB
 constexpr usize DEFAULT_FRAME_ARENA_SIZE = 100 << 20; // 100 MB
-struct EngineInitConfigs {
+struct EngineDesc {
     i32 init_window_width, init_window_height;
     const char *init_window_name;
     i64 omni_arena_size;
@@ -36,16 +35,16 @@ struct EngineInitConfigs {
     i64 frame_arena_size;
 };
 
-void engine_init(EngineInitConfigs *static_configs = nullptr) {
-    i32 init_window_width = static_configs == nullptr ? DEFAULT_INIT_WINDOW_WIDTH : static_configs->init_window_width;
-    i32 init_window_height = static_configs == nullptr ? DEFAULT_INIT_WINDOW_HEIGHT : static_configs->init_window_height;
-    const char *init_window_name = static_configs == nullptr ? "" : static_configs->init_window_name;
-    usize omni_arena_size = static_configs == nullptr ? DEFAULT_OMNI_ARENA_SIZE : static_configs->omni_arena_size;
-    usize tick_arena_size = static_configs == nullptr ? DEFAULT_TICK_ARENA_SIZE : static_configs->tick_arena_size;
-    usize frame_arena_size = static_configs == nullptr ? DEFAULT_FRAME_ARENA_SIZE : static_configs->frame_arena_size;
+void engine_init(EngineDesc *desc = nullptr) {
+    i32 init_window_width = desc == nullptr ? DEFAULT_INIT_WINDOW_WIDTH : desc->init_window_width;
+    i32 init_window_height = desc == nullptr ? DEFAULT_INIT_WINDOW_HEIGHT : desc->init_window_height;
+    const char *init_window_name = desc == nullptr ? "" : desc->init_window_name;
+    usize omni_arena_size = desc == nullptr ? DEFAULT_OMNI_ARENA_SIZE : desc->omni_arena_size;
+    usize tick_arena_size = desc == nullptr ? DEFAULT_TICK_ARENA_SIZE : desc->tick_arena_size;
+    usize frame_arena_size = desc == nullptr ? DEFAULT_FRAME_ARENA_SIZE : desc->frame_arena_size;
 
     // raylib
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_BORDERLESS_WINDOWED_MODE);
     InitWindow(init_window_width, init_window_height, init_window_name);
 
     // arena
@@ -70,7 +69,10 @@ void engine_init(EngineInitConfigs *static_configs = nullptr) {
     // time
     time_realtime_last_frame = (f32)GetTime();
 
+    // sys
     file_sys_init();
+
+    input_sys_init();
 
     graphics_sys_init();
 }
@@ -93,7 +95,7 @@ bool engine_on_frame() {
     tick_accumulated_time += time_realtime_delta;
 
     // cache input for tick
-    input_update_cache();
+    input_update_frame();
 
     // screen
     if (IsWindowResized()) {
@@ -116,6 +118,9 @@ bool engine_on_tick() {
         tick_arena_cur_idx = 1 - tick_arena_cur_idx;
         tick_arena_ptr = &tick_arena_buf[tick_arena_cur_idx];
         arena_reset(tick_arena_ptr);
+
+        //
+        input_update_tick();
     }
     return is_on_tick;
 }

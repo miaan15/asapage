@@ -12,37 +12,27 @@ import mapstr;
 
 using namespace asapage;
 
+MeshKey monkey_mesh_key, box_mesh_key;
+Object3DKey monkey_object_key;
+MaterialKey material_key;
+
+Vec3 monkey_look_dir;
+Vec3 monkey_desired_move_dir;
+
+constexpr f32 MONKEY_MOVE_SPEED = 5;
+
 int main() {
     engine_init();
 
-    MeshKey monkey_mesh_key, box_mesh_key;
     mesh_load(file_asset_path("monkey.glb").c_str(), &monkey_mesh_key);
     mesh_load(file_asset_path("box.glb").c_str(), &box_mesh_key);
 
     MaterialDesc material_desc = { .albedo = { 1, 0, 0 } };
-    MaterialKey material_key = material_create(&material_desc);
+    material_key = material_create(&material_desc);
 
-    Object3DDesc object_desc = { .material_key = material_key, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
-    object_desc.mesh_key = monkey_mesh_key; {
-        object_desc.pos = { 0, 0, 0 };
-        object3d_create(&object_desc);
-
-        object_desc.pos = { 4, 0, 0 };
-        object3d_create(&object_desc);
-
-        object_desc.pos = { -4, 0, 0 };
-        object3d_create(&object_desc);
-    }
-    object_desc.mesh_key = box_mesh_key; {
-        object_desc.pos = { 0, -2, 0 };
-        object3d_create(&object_desc);
-
-        object_desc.pos = { 3, -2, 0 };
-        object3d_create(&object_desc);
-
-        object_desc.pos = { -3, -2, 0 };
-        object3d_create(&object_desc);
-    }
+    Object3DDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
+                                        .pos = VEC3_ZERO, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
+    monkey_object_key = object3d_create(&monkey_object_desc);
 
     FrameConstant *frame_constant = &graphics_sys.frame_constant;
     frame_constant->view_size = { (f32)screen_width, (f32)screen_height };
@@ -54,8 +44,22 @@ int main() {
 
     while (engine_on_frame()) {
         while (engine_on_tick()) {
+            // input
+            monkey_desired_move_dir = VEC3_ZERO;
+            if (input_is_key_on_tick(SCANCODE::W)) { monkey_desired_move_dir.z -= 1; }
+            if (input_is_key_on_tick(SCANCODE::A)) { monkey_desired_move_dir.x -= 1; }
+            if (input_is_key_on_tick(SCANCODE::S)) { monkey_desired_move_dir.z += 1; }
+            if (input_is_key_on_tick(SCANCODE::D)) { monkey_desired_move_dir.x += 1; }
+            monkey_desired_move_dir = vec3_normalize(monkey_desired_move_dir);
+
+            // monke
+            Object3D *monkey_object = object3d_get(monkey_object_key);
+            monkey_object->pos += monkey_desired_move_dir * MONKEY_MOVE_SPEED * time_delta;
+
+            frame_constant->view_center = object3d_get(monkey_object_key)->pos;
 
         }
+
 
         engine_draw();
     }

@@ -42,13 +42,14 @@ template <typename T> void pool_init(Pool<T> *pool, Arena *arena, i32 cap,
     pool->offset_of_validate_field = offset_of_validate_field;
 }
 
+template <typename T> PoolKey pool_stub_key(Pool<T> *pool) { return PoolKey{0}; }
 template <typename T> T *pool_stub(Pool<T> *pool) { return &pool->data_buf[0]; }
 
 template <typename T> PoolKey pool_create(Pool<T> *pool, T *data = nullptr, T **out_instance = nullptr) {
     if (pool->len + 1 >= pool->cap) {
         log_err("pool_create: create too much -> stub: len = [%d]", pool->len);
         if (out_instance != nullptr) { *out_instance = pool_stub(pool); }
-        return PoolKey{0};
+        return pool_stub_key(pool);
     }
 
     i32 target_idx = pool->freelist_head;
