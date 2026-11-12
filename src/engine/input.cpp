@@ -151,6 +151,7 @@ inline InputSys input_sys = {};
 constexpr u8 _INPUT_CACHE_DOWN_STATE = 0b001;
 constexpr u8 _INPUT_CACHE_ON_STATE = 0b010;
 constexpr u8 _INPUT_CACHE_UP_STATE = 0b100;
+bool _input_has_bit(u8 x, u8 m) { return (x & m) != 0; } // ONLY USE FOR 1-BIT BITMASK
 
 void input_sys_init() {
     input_sys.numkeys = INPUT_MAX_KEYBOARD_KEY_NUM;
@@ -171,15 +172,15 @@ bool input_is_key_up(SCANCODE scancode) {
 }
 
 bool input_is_key_down_tick(SCANCODE scancode) {
-    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_DOWN_STATE) != 0;
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_DOWN_STATE);
 }
 
 bool input_is_key_on_tick(SCANCODE scancode) {
-    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_ON_STATE) != 0;
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_ON_STATE);
 }
 
 bool input_is_key_up_tick(SCANCODE scancode) {
-    return (input_sys.tick_keyboard_state[(i32)scancode] & _INPUT_CACHE_UP_STATE) != 0;
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_UP_STATE);
 }
 
 void input_update_frame() {
@@ -207,26 +208,29 @@ void input_update_tick() {
 
         // if a key is "down" and "up" before a tick, delay the "up" state for 1 tick so that "down" and "up" not happens in single tick
         input_sys.cache_keyboard_state[i] =
-            input_sys.cache_keyboard_state[i] == (_INPUT_CACHE_DOWN_STATE | _INPUT_CACHE_UP_STATE) ?
+            _input_has_bit(input_sys.cache_keyboard_state[i], _INPUT_CACHE_ON_STATE) &&
+            _input_has_bit(input_sys.cache_keyboard_state[i], _INPUT_CACHE_UP_STATE) ?
                 _INPUT_CACHE_UP_STATE : 0;
     }
 }
 
 bool _input_cache_is_key_down(usize idx) {
     u8 cache_state = input_sys.cache_keyboard_state[idx];
-    return (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
+    bool is_cache_key_down = _input_has_bit(cache_state, _INPUT_CACHE_DOWN_STATE);
+    return is_cache_key_down;
 }
 
 bool _input_cache_is_key_on(usize idx) {
     u8 cache_state = input_sys.cache_keyboard_state[idx];
-    bool is_cache_key_up = (cache_state & _INPUT_CACHE_UP_STATE) != 0;
-    return ((cache_state & _INPUT_CACHE_ON_STATE) != 0) && !is_cache_key_up;
+    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
+    return is_cache_key_on;
 }
 
 bool _input_cache_is_key_up(usize idx) {
     u8 cache_state = input_sys.cache_keyboard_state[idx];
-    bool is_cache_key_down = (cache_state & _INPUT_CACHE_DOWN_STATE) != 0;
-    return ((cache_state & _INPUT_CACHE_UP_STATE) != 0) && !is_cache_key_down;
+    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
+    bool is_cache_key_up = _input_has_bit(cache_state, _INPUT_CACHE_UP_STATE);
+    return is_cache_key_up && !is_cache_key_on;
 }
 
 }
