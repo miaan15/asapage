@@ -121,6 +121,7 @@ bool engine_on_tick() {
 
         //
         input_update_tick();
+        graphics_update_tick();
     }
     return is_on_tick;
 }
@@ -133,6 +134,8 @@ void engine_draw() {
     ClearBackground(BLACK);
 
     graphics_draw();
+
+    DrawFPS(10, 10);
 
     EndDrawing();
 }

@@ -127,8 +127,8 @@ void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
     glDepthFunc(GL_LESS);
 }
 
-void graphics_update();
-void graphics_upload_to_gpu();
+void _graphics_update_frame();
+void _graphics_upload_to_gpu();
 
 void graphics_draw() {
     // bind buffers
@@ -138,8 +138,8 @@ void graphics_draw() {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESH_INDEX_BUF_BIND_IDX, mesh_sys.index_gpu_buf);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MATERIAL_LIST_BIND_IDX, material_sys.material_gpu_list);
 
-    graphics_update();
-    graphics_upload_to_gpu();
+    _graphics_update_frame();
+    _graphics_upload_to_gpu();
 
     // draw
     glUseProgram(graphics_sys.gpu_program);
@@ -155,7 +155,11 @@ void graphics_draw() {
     if (err != GL_NO_ERROR) { log_err("GL error: %d", err); }
 }
 
-void graphics_update() {
+void graphics_update_tick() {
+    object3d_update_tick();
+}
+
+void _graphics_update_frame() {
     // frame constant
     FrameConstant frame_constant = graphics_sys.frame_constant;
 
@@ -181,11 +185,11 @@ void graphics_update() {
     };
 
     //
-    material_update();
-    object3d_update();
+    material_update_frame();
+    object3d_update_frame();
 }
 
-void graphics_upload_to_gpu() {
+void _graphics_upload_to_gpu() {
     // frame constant
     glBindBuffer(GL_UNIFORM_BUFFER, graphics_sys.frame_constant_gpu_uniform); {
         glBufferSubData(GL_UNIFORM_BUFFER,

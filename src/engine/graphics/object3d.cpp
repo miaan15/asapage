@@ -1,6 +1,7 @@
 module;
 
 #include <cstddef>
+#include <cmath>
 #include <glad.h>
 
 export module graphics_object3d;
@@ -30,6 +31,7 @@ struct Object3DKey {
     };
 };
 
+// FIXME maybe interpolate might not be this's work, but for now, whatever
 struct Object3D {
     i32 idx;
     i16 validate;
@@ -40,6 +42,14 @@ struct Object3D {
     Vec3 pos;
     Vec4 rot;
     Vec3 scale;
+
+    Vec3 last_tick_pos;
+    Vec4 last_tick_rot;
+    Vec3 last_tick_scale;
+
+    Vec3 frame_pos;
+    Vec4 frame_rot;
+    Vec3 frame_scale;
 };
 
 struct Object3DDesc {
@@ -94,11 +104,16 @@ void object3d_sys_init(i32 object_cap = OBJECT3D_CAP_DEFAULT) {
 Object3DKey object3d_create(Object3DDesc *desc = nullptr, Object3D *out_object = nullptr) {
     Object3D new_object_data;
     if (desc != nullptr) {
+        new_object_data.mesh_key = desc->mesh_key;
+        new_object_data.material_key = desc->material_key;
+
         new_object_data.pos = desc->pos;
         new_object_data.rot = desc->rot;
         new_object_data.scale = desc->scale;
-        new_object_data.mesh_key = desc->mesh_key;
-        new_object_data.material_key = desc->material_key;
+
+        new_object_data.last_tick_pos = desc->pos;
+        new_object_data.last_tick_rot = desc->rot;
+        new_object_data.last_tick_scale = desc->scale;
     } else { mem_zero(&new_object_data, sizeof(Object3D)); }
 
     PoolKey pool_key = pool_create(&object3d_sys.object_pool, &new_object_data, &out_object);
@@ -130,7 +145,7 @@ void object3d_upload_to_gpu() {
     } glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-void object3d_update() {
+void object3d_update_frame() {
     list_reset(&object3d_sys.draw_object_gpu_map_list);
     list_reset(&object3d_sys.draw_object_indices_num_list);
     object3d_sys.draw_object_num = 0;
@@ -140,20 +155,32 @@ void object3d_update() {
     while (pool_iterate(&object3d_sys.object_pool, &_pool_idx, &iter_object, nullptr)) {
         MeshMeta object_mesh_meta = mesh_get_meta(iter_object->mesh_key);
 
+        iter_object->frame_pos = vec3_lerp(iter_object->last_tick_pos, iter_object->pos, interpolate_alpha);
+        iter_object->frame_rot = quat_lerp(iter_object->last_tick_rot, iter_object->rot, interpolate_alpha);
+        iter_object->frame_scale = vec3_lerp(iter_object->last_tick_scale, iter_object->scale, interpolate_alpha);
         Object3DGPUMap object_gpu_map = {
             .mesh_vertex_offset = object_mesh_meta.vertex_offset,
             .mesh_index_offset = object_mesh_meta.index_offset,
-
             .material_idx = iter_object->material_key.idx,
-
-            .model_matrix = mat4_translation(iter_object->pos) *
-                            mat4_rotation(iter_object->rot) *
-                            mat4_scale(iter_object->scale)
+            // nah this should be on GPU
+            .model_matrix = mat4_translation(iter_object->frame_pos) *
+                            mat4_rotation(iter_object->frame_rot) *
+                            mat4_scale(iter_object->frame_scale)
         };
 
         list_create(&object3d_sys.draw_object_gpu_map_list, &object_gpu_map);
         list_create(&object3d_sys.draw_object_indices_num_list, &object_mesh_meta.indices_num);
         object3d_sys.draw_object_num++;
+    }
+}
+
+void object3d_update_tick() {
+    i32 _pool_idx = 0;
+    Object3D *iter_object;
+    while (pool_iterate(&object3d_sys.object_pool, &_pool_idx, &iter_object, nullptr)) {
+        iter_object->last_tick_pos = iter_object->pos;
+        iter_object->last_tick_rot = iter_object->rot;
+        iter_object->last_tick_scale = iter_object->scale;
     }
 }
 

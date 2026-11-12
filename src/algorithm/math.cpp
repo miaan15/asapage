@@ -444,6 +444,28 @@ inline Quat quat_normalize(Quat q) {
     return len > MATH_EPSILON ? q / len : QUAT_IDENTITY;
 }
 
+inline Quat quat_lerp(Quat a, Quat b, f32 t) {
+    f32 dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+
+    f32 sign = (dot < 0) ? -1 : 1;
+
+    Quat res;
+    res.x = a.x + t * (b.x * sign - a.x);
+    res.y = a.y + t * (b.y * sign - a.y);
+    res.z = a.z + t * (b.z * sign - a.z);
+    res.w = a.w + t * (b.w * sign - a.w);
+
+    f32 len_sq = res.x * res.x + res.y * res.y + res.z * res.z + res.w * res.w;
+    f32 inv_len = 1 / math_sqrt(len_sq + 1e-12);
+
+    res.x *= inv_len;
+    res.y *= inv_len;
+    res.z *= inv_len;
+    res.w *= inv_len;
+
+    return res;
+}
+
 // MAT FUNCTIONS
 inline Mat4 mat4_transpose(const Mat4* m) {
     return Mat4{ .raw = {

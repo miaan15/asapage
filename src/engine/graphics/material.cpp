@@ -90,7 +90,7 @@ void material_upload_to_gpu() {
     } glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-void material_update() {
+void material_update_frame() {
     for (i32 i = 0; i < material_sys.material_num; i++) {
         Material *material = list_get(&material_sys.material_list, i);
         MaterialGPUMap *material_gpu_map = list_get(&material_sys.material_gpu_map_list, i);
