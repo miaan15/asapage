@@ -1,5 +1,8 @@
+#include <glad.h>
+
 import define;
 import mem;
+import log;
 
 import engine;
 

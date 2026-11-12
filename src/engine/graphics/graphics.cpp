@@ -123,9 +123,9 @@ void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
         glEnableVertexAttribArray(0);
     } glBindVertexArray(0);
 
-    // // enable gl stuffs
-    // glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_LESS);
+    // enable gl stuffs
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 }
 
 void _graphics_update_frame();

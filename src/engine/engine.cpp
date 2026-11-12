@@ -140,16 +140,6 @@ void engine_draw() {
     DrawFPS(10, 10);
 
     EndDrawing();
-
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // glViewport(0, 0, GetScreenWidth(), GetScreenHeight());
-    // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // graphics_draw();
-
-    // SwapScreenBuffer();
-    // PollInputEvents();
 }
 
 i32 engine_mem_offset(void *ptr) { return (char*)ptr - (char*)omni_arena_ptr->buf; }
