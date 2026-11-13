@@ -66,6 +66,8 @@ constexpr GLuint MESH_VERTEX_BUF_BIND_IDX = 2;
 constexpr GLuint MESH_INDEX_BUF_BIND_IDX = 3;
 constexpr GLuint MATERIAL_LIST_BIND_IDX = 4;
 
+constexpr GLuint OBJECT_IDX_INPUT_BIND_IDX = 1;
+
 void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
     shader_sys_init(); // FIXME shader is a different shiet here, but for the sake of simplicity for now, I put it here
 
@@ -118,14 +120,14 @@ void graphics_sys_init(GraphicsSysDesc *desc = nullptr) {
     glGenVertexArrays(1, &graphics_sys.iota_vao);
     glBindVertexArray(graphics_sys.iota_vao); {
         glBindBuffer(GL_ARRAY_BUFFER, graphics_sys.iota_vbo);
-        glVertexAttribIPointer(0, 1, GL_INT, sizeof(i32), (void*)0);
-        glVertexAttribDivisor(0, 1);
-        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(OBJECT_IDX_INPUT_BIND_IDX);
+        glVertexAttribIPointer(OBJECT_IDX_INPUT_BIND_IDX, 1, GL_INT, sizeof(i32), (void*)0);
+        glVertexAttribDivisor(OBJECT_IDX_INPUT_BIND_IDX, 1);
     } glBindVertexArray(0);
 
     // enable gl stuffs
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    // glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_LESS);
 }
 
 void _graphics_update_frame();
@@ -147,8 +149,7 @@ void graphics_draw() {
     glBindVertexArray(graphics_sys.iota_vao); {
         for (i32 i = 0; i < object3d_sys.draw_object_num; i++) {
             i32 indices_num = *list_get(&object3d_sys.draw_object_indices_num_list, i);
-            glBindVertexBuffer(0, graphics_sys.iota_vbo, i * sizeof(i32), sizeof(i32));
-            glDrawArraysInstanced(GL_TRIANGLES, 0, indices_num, 1);
+            glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, indices_num, 1, i);
         }
     } glBindVertexArray(0);
 
