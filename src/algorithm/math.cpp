@@ -468,12 +468,12 @@ inline Quat quat_lerp(Quat a, Quat b, f32 t) {
 }
 
 // MAT FUNCTIONS
-inline Mat4 mat4_transpose(const Mat4* m) {
+inline Mat4 mat4_transpose(Mat4 m) {
     return Mat4{ .raw = {
-        { m->raw[0][0], m->raw[1][0], m->raw[2][0], m->raw[3][0] },
-        { m->raw[0][1], m->raw[1][1], m->raw[2][1], m->raw[3][1] },
-        { m->raw[0][2], m->raw[1][2], m->raw[2][2], m->raw[3][2] },
-        { m->raw[0][3], m->raw[1][3], m->raw[2][3], m->raw[3][3] }
+        { m.raw[0][0], m.raw[1][0], m.raw[2][0], m.raw[3][0] },
+        { m.raw[0][1], m.raw[1][1], m.raw[2][1], m.raw[3][1] },
+        { m.raw[0][2], m.raw[1][2], m.raw[2][2], m.raw[3][2] },
+        { m.raw[0][3], m.raw[1][3], m.raw[2][3], m.raw[3][3] }
     }};
 }
 

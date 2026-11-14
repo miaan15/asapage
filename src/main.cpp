@@ -1,13 +1,13 @@
-#include <glad.h>
+#include <raylib.h>
 
 import define;
 import mem;
 import log;
 
 import engine;
+import graphics;
 
 import file;
-
 import math;
 import pool;
 import map;
@@ -16,7 +16,7 @@ import mapstr;
 using namespace asapage;
 
 MeshKey monkey_mesh_key, box_mesh_key;
-Object3DKey monkey_object_key;
+ObjectKey monkey_object_key;
 MaterialKey material_key;
 
 Vec3 monkey_look_dir;
@@ -27,35 +27,35 @@ constexpr f32 MONKEY_MOVE_SPEED = 15;
 int main() {
     engine_init();
 
-    mesh_load(file_asset_path("monkey.glb").c_str(), &monkey_mesh_key);
-    mesh_load(file_asset_path("box.glb").c_str(), &box_mesh_key);
+    ModelLoadResult monkey_model_res = model_load(file_asset_path("monkey.glb").c_str());
+    monkey_mesh_key = monkey_model_res.mesh_keys[0];
 
-    MaterialDesc material_desc = { .albedo = { 1, 0, 0 } };
-    material_key = material_create(&material_desc);
+    ModelLoadResult box_model_res = model_load(file_asset_path("box.glb").c_str());
+    box_mesh_key = box_model_res.mesh_keys[0];
 
-    Object3DDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
-                                        .pos = VEC3_ZERO, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
-    monkey_object_key = object3d_create(&monkey_object_desc);
+    material_key = material_create({ 1, 0, 0, 1 });
 
-    FrameConstant *frame_constant = &graphics_sys.frame_constant;
-    frame_constant->view_size = { (f32)screen_width, (f32)screen_height };
-    frame_constant->view_range = { 0.1, 100 };
-    frame_constant->view_eye = { 0, 5, 8 };
-    frame_constant->view_center = { 0, 0, 0 };
-    frame_constant->view_up = { 0, 1, 0 };
-    frame_constant->view_fov = 60 * MATH_DEG_TO_RAD;
+    ObjectDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
+                                      .pos = VEC3_ZERO, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
+    monkey_object_key = object_create(&monkey_object_desc);
 
-    constexpr i32 TEST_WIDTH = 5;
-    constexpr i32 TEST_HEIGHT = 5;
-    constexpr f32 TEST_DISTANE = 3;
-    Object3DKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
-    Object3DDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
-                                      .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
+    Camera3D *camera = &graphics_sys.camera;
+    camera->position = { 0, 5, 8 };
+    camera->target = { 0, 0, 0 };
+    camera->up = { 0, 1, 0 };
+    camera->fovy = 60;
+    camera->projection = CAMERA_PERSPECTIVE;
+
+    constexpr i32 TEST_WIDTH = 10;
+    constexpr i32 TEST_HEIGHT = 10;
+    constexpr f32 TEST_DISTANCE = 3;
+    ObjectKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
+    ObjectDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
+                                    .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
     for (i32 i = 0; i < TEST_WIDTH; i++) {
         for (i32 j = 0; j < TEST_HEIGHT; j++) {
-            test_object_desc.pos.x = TEST_DISTANE * (i - (TEST_WIDTH / 2));
-            test_object_desc.pos.z = TEST_DISTANE * (j - (TEST_HEIGHT / 2));
-            test_object_keys[i + j * TEST_WIDTH] = object3d_create(&test_object_desc);
+            test_object_desc.pos = { TEST_DISTANCE * (i - (TEST_WIDTH / 2)), 0, TEST_DISTANCE * (j - (TEST_HEIGHT / 2)) };
+            test_object_keys[i + j * TEST_WIDTH] = object_create(&test_object_desc);
         }
     }
 
@@ -63,21 +63,22 @@ int main() {
         while (engine_on_tick()) {
             // input
             monkey_desired_move_dir = VEC3_ZERO;
-            if (input_is_key_on_tick(SCANCODE::W)) { monkey_desired_move_dir.z -= 1; }
-            if (input_is_key_on_tick(SCANCODE::A)) { monkey_desired_move_dir.x -= 1; }
-            if (input_is_key_on_tick(SCANCODE::S)) { monkey_desired_move_dir.z += 1; }
-            if (input_is_key_on_tick(SCANCODE::D)) { monkey_desired_move_dir.x += 1; }
+            if (IsKeyDown(KEY_W)) { monkey_desired_move_dir.z -= 1; }
+            if (IsKeyDown(KEY_A)) { monkey_desired_move_dir.x -= 1; }
+            if (IsKeyDown(KEY_S)) { monkey_desired_move_dir.z += 1; }
+            if (IsKeyDown(KEY_D)) { monkey_desired_move_dir.x += 1; }
             monkey_desired_move_dir = vec3_normalize(monkey_desired_move_dir);
 
             // monke
-            Object3D *monkey_object = object3d_get(monkey_object_key);
+            Object *monkey_object = object_get(monkey_object_key);
             monkey_object->pos += monkey_desired_move_dir * MONKEY_MOVE_SPEED * time_delta;
 
             for (i32 i = 0; i < TEST_WIDTH * TEST_HEIGHT; i++) {
-                object3d_get(test_object_keys[i])->pos += monkey_desired_move_dir * MONKEY_MOVE_SPEED * time_delta;
+                object_get(test_object_keys[i])->pos += monkey_desired_move_dir * MONKEY_MOVE_SPEED * time_delta;
             }
         }
-        frame_constant->view_center = object3d_get(monkey_object_key)->frame_pos;
+        Vec3 monkey_pos = object_get(monkey_object_key)->pos;
+        camera->target = { monkey_pos.x, monkey_pos.y, monkey_pos.z };
 
         engine_draw();
     }

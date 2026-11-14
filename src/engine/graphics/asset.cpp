@@ -95,6 +95,9 @@ void graphics_asset_sys_init(i32 texture = TEXTURE_CAP_DEFAULT,
     list_init(&graphics_asset_sys.material_list, omni_arena_ptr, material);
     list_init(&graphics_asset_sys.mesh_list, omni_arena_ptr, mesh);
 
+    // stub
+    list_stub(&graphics_asset_sys.texture_list); // TODO make it caro blackpink
+
     // defaults
     Image default_image = GenImageColor(1, 1, WHITE);
     Texture default_texture = LoadTextureFromImage(default_image);
@@ -167,45 +170,64 @@ MaterialKey material_create(Vec4 color = VEC4_ONE,
 }
 
 struct ModelLoadResult {
-    Texture *textures; i32 texture_num;
-    Mesh *meshs; i32 mesh_num;
+    MeshKey *mesh_keys; Mesh *meshs; i32 mesh_num;
 };
 ModelLoadResult model_load(const char *path, Arena *arena = tick_arena_ptr) {
     Model model = LoadModel(path);
 
     ModelLoadResult result = {};
-    result.texture_num = model.materialCount;
     result.mesh_num = model.meshCount;
 
-    if (result.texture_num > 0) {
-        result.textures = (Texture *)arena_alloc(arena, sizeof(Texture) * result.texture_num);
-        for (i32 i = 0; i < result.texture_num; i++) {
-            Texture new_texture = model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
-            i32 idx = list_create(&graphics_asset_sys.texture_list, &new_texture);
-            graphics_asset_sys.texture_num++;
-
-            log_debug(".Loaded Texture [%d] from model: path = [%s]; size = [%d, %d]", idx, path, new_texture.width, new_texture.height);
-
-            result.textures[i] = new_texture;
-        }
-    }
-
     if (result.mesh_num > 0) {
+        result.mesh_keys = (MeshKey *)arena_alloc(omni_arena_ptr, sizeof(MeshKey) * result.mesh_num);
         result.meshs = (Mesh *)arena_alloc(omni_arena_ptr, sizeof(Mesh) * result.mesh_num);
         for (i32 i = 0; i < result.mesh_num; i++) {
             Mesh new_mesh = model.meshes[i];
             i32 idx = list_create(&graphics_asset_sys.mesh_list, &new_mesh);
             graphics_asset_sys.mesh_num++;
 
-            log_debug(".Loaded Mesh [%d] from model: vertex_num = [%d]; triangle_num = [%d]", idx, path, new_mesh.vertexCount, new_mesh.triangleCount);
+            log_debug(".Loaded Mesh [%d] from model: path = [%s]; vertex_num = [%d]; triangle_num = [%d]", idx, path, new_mesh.vertexCount, new_mesh.triangleCount);
 
+            result.mesh_keys[i] = (MeshKey){ .idx = idx };
             result.meshs[i] = new_mesh;
         }
     }
 
-    log_debug("Loaded Model: path = [%s]; textures = [%d]; meshes = [%d]", path, result.texture_num, result.mesh_num);
+    log_debug("Loaded Model: path = [%s]; mesh_num = [%d]", path, result.mesh_num);
 
     return result;
+}
+
+Texture *texture_get(TextureKey key) {
+    if (key.idx < 0 || key.idx > graphics_asset_sys.texture_num) {
+        log_err("texture_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
+        return list_stub(&graphics_asset_sys.texture_list);
+    }
+    return list_get(&graphics_asset_sys.texture_list, key.idx);
+}
+
+Shader *shader_get(ShaderKey key) {
+    if (key.idx < 0 || key.idx > graphics_asset_sys.shader_num) {
+        log_err("shader_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
+        return list_stub(&graphics_asset_sys.shader_list);
+    }
+    return list_get(&graphics_asset_sys.shader_list, key.idx);
+}
+
+Material *material_get(MaterialKey key) {
+    if (key.idx < 0 || key.idx > graphics_asset_sys.material_num) {
+        log_err("material_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
+        return list_stub(&graphics_asset_sys.material_list);
+    }
+    return list_get(&graphics_asset_sys.material_list, key.idx);
+}
+
+Mesh *mesh_get(MeshKey key) {
+    if (key.idx < 0 || key.idx > graphics_asset_sys.mesh_num) {
+        log_err("mesh_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
+        return list_stub(&graphics_asset_sys.mesh_list);
+    }
+    return list_get(&graphics_asset_sys.mesh_list, key.idx);
 }
 
 }

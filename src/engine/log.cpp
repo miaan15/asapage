@@ -53,8 +53,8 @@ inline void print_stacktrace(FILE* stream) {
     void* array[32];
     int size = backtrace(array, 32);
 
-    int _size = size > 2 + 4 ? 2 + 4 : size;
-    for (int i = 2; i < _size; ++i) {
+    int _size = size > 3 + 3 ? 3 + 3 : size;
+    for (int i = 3; i < _size; ++i) {
         Dl_info info;
         if (dladdr(array[i], &info) && info.dli_fname) {
             uintptr_t addr = (uintptr_t)array[i] - (uintptr_t)info.dli_fbase;
@@ -69,13 +69,13 @@ inline void print_stacktrace(FILE* stream) {
                 if (fgets(func, sizeof(func), fp) && fgets(file, sizeof(file), fp)) {
                     func[strcspn(func, "\r\n")] = 0;
                     file[strcspn(file, "\r\n")] = 0;
-                    fprintf(stream, " %d. %-32.32s - %s\n", i - 1, func, file);
+                    fprintf(stream, " %d. %-32.32s - %s\n", i - 2, func, file);
                 } else {
-                    fprintf(stream, " %d. %-32.32s - (+0x%lx)\n", i - 1, info.dli_fname, (unsigned long)addr);
+                    fprintf(stream, " %d. %-32.32s - (+0x%lx)\n", i - 2, info.dli_fname, (unsigned long)addr);
                 }
                 pclose(fp);
             } else {
-                fprintf(stream, " %d. 0x%lx\n", i - 1, (unsigned long)array[i]);
+                fprintf(stream, " %d. 0x%lx\n", i - 2, (unsigned long)array[i]);
             }
         }
     }

@@ -18,14 +18,14 @@ template <typename T> struct List {
 
 template <typename T> void list_init(List<T> *list, Arena *arena, i32 cap, i32 offset_of_idx_field = -1) {
     cap = cap <= 0 ? 4 : cap;
-    list->buf = (T*)arena_alloc(arena, (cap + 1) * sizeof(T)); // cap + 1 is for stub
+    list->buf = (T*)arena_alloc(arena, cap * sizeof(T));
     list->cap = cap;
-    list->len = 0;
+    list->len = 1; // stub
     list->offset_of_idx_field = offset_of_idx_field;
 }
 
-template <typename T> i32 list_stub_idx(List<T> *list) { return list->cap; }
-template <typename T> T *list_stub(List<T> *list) { return &list->buf[list_stub_idx(list)]; }
+template <typename T> i32 list_stub_idx(List<T> *list) { return 0; }
+template <typename T> T *list_stub(List<T> *list) { return &list->buf[0]; }
 
 template <typename T> i32 list_create(List<T> *list, T *data = nullptr, T **out_instance = nullptr) {
     if (list->len >= list->cap) {
@@ -63,7 +63,7 @@ template <typename T> void list_reset(List<T> *list) {
 }
 
 template <typename T> bool list_iterate(List<T> *list, i32 *iter_idx, T **r_instance) {
-    if (*iter_idx < 0) { *iter_idx = 0; }
+    if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
     T *instance = list_stub(list);
