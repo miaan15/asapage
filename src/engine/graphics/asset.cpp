@@ -1,0 +1,211 @@
+module;
+
+#include <raylib.h>
+
+export module graphics_asset;
+
+import define;
+import mem;
+import internal;
+import log;
+import math;
+import list;
+
+export namespace asapage {
+
+struct TextureKey {
+    union { u64 raw; struct {
+        i32 idx;
+        u32 _reserve; };
+    };
+};
+
+struct ShaderKey {
+    union { u64 raw; struct {
+        i32 idx;
+        u32 _reserve; };
+    };
+};
+
+struct MaterialKey {
+    union { u64 raw; struct {
+        i32 idx;
+        u32 _reserve; };
+    };
+};
+
+struct MeshKey {
+    union { u64 raw; struct {
+        i32 idx;
+        u32 _reserve; };
+    };
+};
+
+struct Material {
+    Vec4 color;
+    TextureKey texture_key;
+    ShaderKey shader_key;
+
+    f32 params[4]; // reserve what raylib provides
+};
+
+struct GraphicsAssetSys {
+    List<Texture> texture_list;
+    i32 texture_num;
+
+    List<Shader> shader_list;
+    i32 shader_num;
+
+    List<Material> material_list;
+    i32 material_num;
+
+    List<Mesh> mesh_list;
+    i32 mesh_num;
+};
+inline GraphicsAssetSys graphics_asset_sys = {};
+
+constexpr i32 TEXTURE_CAP_DEFAULT = 512;
+constexpr i32 SHADER_CAP_DEFAULT = 128;
+constexpr i32 MATERIAL_CAP_DEFAULT = 512;
+constexpr i32 MESH_CAP_DEFAULT = 512;
+
+constexpr TextureKey TEXTURE_STUB_KEY = { .idx = 0 };
+constexpr ShaderKey SHADER_STUB_KEY = { .idx = 0 };
+constexpr MaterialKey MATERIAL_STUB_KEY = { .idx = 0 };
+constexpr MeshKey MESH_STUB_KEY = { .idx = 0 };
+
+constexpr TextureKey TEXTURE_DEFAULT_KEY = { .idx = 1 };
+constexpr ShaderKey SHADER_DEFAULT_KEY = { .idx = 1 };
+constexpr MaterialKey MATERIAL_DEFAULT_KEY = { .idx = 1 };
+
+constexpr MeshKey MESH_CUBE_KEY = { .idx = 1 };
+constexpr MeshKey MESH_SPHERE_KEY = { .idx = 2 };
+constexpr MeshKey MESH_PLANE_KEY = { .idx = 3 };
+constexpr MeshKey MESH_CYLINDER_KEY = { .idx = 4 };
+constexpr MeshKey MESH_CONE_KEY = { .idx = 5 };
+constexpr MeshKey MESH_TORUS_KEY = { .idx = 6 };
+constexpr MeshKey MESH_HEMISPHERE_KEY = { .idx = 7 };
+
+void graphics_asset_sys_init(i32 texture = TEXTURE_CAP_DEFAULT,
+                             i32 shader = SHADER_CAP_DEFAULT,
+                             i32 material = MATERIAL_CAP_DEFAULT,
+                             i32 mesh = MESH_CAP_DEFAULT) {
+    list_init(&graphics_asset_sys.texture_list, omni_arena_ptr, texture);
+    list_init(&graphics_asset_sys.shader_list, omni_arena_ptr, shader);
+    list_init(&graphics_asset_sys.material_list, omni_arena_ptr, material);
+    list_init(&graphics_asset_sys.mesh_list, omni_arena_ptr, mesh);
+
+    // defaults
+    Image default_image = GenImageColor(1, 1, WHITE);
+    Texture default_texture = LoadTextureFromImage(default_image);
+    UnloadImage(default_image);
+    list_create(&graphics_asset_sys.texture_list, &default_texture);
+    graphics_asset_sys.texture_num++;
+
+    Shader default_shader = LoadShader(0, 0);
+    list_create(&graphics_asset_sys.shader_list, &default_shader);
+    graphics_asset_sys.shader_num++;
+
+    Material default_material = { .color = VEC4_ONE,
+                                  .texture_key = TEXTURE_DEFAULT_KEY,
+                                  .shader_key = SHADER_DEFAULT_KEY };
+    list_create(&graphics_asset_sys.material_list, &default_material);
+    graphics_asset_sys.material_num++;
+
+    Mesh default_meshes[] = {
+        GenMeshCube(1.0f, 1.0f, 1.0f),
+        GenMeshSphere(0.5f, 16, 16),
+        GenMeshPlane(1.0f, 1.0f, 1, 1),
+        GenMeshCylinder(0.5f, 1.0f, 16),
+        GenMeshCone(0.5f, 1.0f, 16),
+        GenMeshTorus(0.25f, 1.0f, 16, 16),
+        GenMeshHemiSphere(0.5f, 16, 16),
+    };
+    for (i32 i = 0; i < (i32)(sizeof(default_meshes) / sizeof(default_meshes[0])); i++) {
+        list_create(&graphics_asset_sys.mesh_list, &default_meshes[i]);
+        graphics_asset_sys.mesh_num++;
+    }
+}
+
+TextureKey texture_create(const char *path, Texture *out_texture = nullptr) {
+    Texture new_texture = LoadTexture(path);
+
+    i32 idx = list_create(&graphics_asset_sys.texture_list, &new_texture, &out_texture);
+    graphics_asset_sys.texture_num++;
+
+    log_debug("Created Texture [%d]: path = [%s]; size = [%d, %d]", idx, path, new_texture.width, new_texture.height);
+
+    return TextureKey{ .idx = idx };
+}
+
+ShaderKey shader_create(const char *vs_path, const char *fs_path, Shader *out_shader = nullptr) {
+    Shader new_shader = LoadShader(vs_path, fs_path);
+
+    i32 idx = list_create(&graphics_asset_sys.shader_list, &new_shader, &out_shader);
+    graphics_asset_sys.shader_num++;
+
+    log_debug("Created Shader [%d]: vertex_path = [%s]; fragment_path = [%s]", idx, vs_path, fs_path);
+
+    return ShaderKey{ .idx = idx };
+}
+
+MaterialKey material_create(Vec4 color = VEC4_ONE,
+                            TextureKey texture_key = TEXTURE_DEFAULT_KEY,
+                            ShaderKey shader_key = SHADER_DEFAULT_KEY,
+                            Material *out_material = nullptr) {
+    Material new_material = { .color = color,
+                              .texture_key = texture_key,
+                              .shader_key = shader_key };
+
+    i32 idx = list_create(&graphics_asset_sys.material_list, &new_material, &out_material);
+    graphics_asset_sys.material_num++;
+
+    log_debug("Created Material [%d]: color = [%.1f, %.1f, %.1f, %.1f]; texture = [%d]; shader = [%d]",
+              idx, color.x, color.y, color.z, color.w, texture_key.idx, shader_key.idx);
+
+    return MaterialKey{ .idx = idx };
+}
+
+struct ModelLoadResult {
+    Texture *textures; i32 texture_num;
+    Mesh *meshs; i32 mesh_num;
+};
+ModelLoadResult model_load(const char *path, Arena *arena = tick_arena_ptr) {
+    Model model = LoadModel(path);
+
+    ModelLoadResult result = {};
+    result.texture_num = model.materialCount;
+    result.mesh_num = model.meshCount;
+
+    if (result.texture_num > 0) {
+        result.textures = (Texture *)arena_alloc(arena, sizeof(Texture) * result.texture_num);
+        for (i32 i = 0; i < result.texture_num; i++) {
+            Texture new_texture = model.materials[i].maps[MATERIAL_MAP_DIFFUSE].texture;
+            i32 idx = list_create(&graphics_asset_sys.texture_list, &new_texture);
+            graphics_asset_sys.texture_num++;
+
+            log_debug(".Loaded Texture [%d] from model: path = [%s]; size = [%d, %d]", idx, path, new_texture.width, new_texture.height);
+
+            result.textures[i] = new_texture;
+        }
+    }
+
+    if (result.mesh_num > 0) {
+        result.meshs = (Mesh *)arena_alloc(omni_arena_ptr, sizeof(Mesh) * result.mesh_num);
+        for (i32 i = 0; i < result.mesh_num; i++) {
+            Mesh new_mesh = model.meshes[i];
+            i32 idx = list_create(&graphics_asset_sys.mesh_list, &new_mesh);
+            graphics_asset_sys.mesh_num++;
+
+            log_debug(".Loaded Mesh [%d] from model: vertex_num = [%d]; triangle_num = [%d]", idx, path, new_mesh.vertexCount, new_mesh.triangleCount);
+
+            result.meshs[i] = new_mesh;
+        }
+    }
+
+    log_debug("Loaded Model: path = [%s]; textures = [%d]; meshes = [%d]", path, result.texture_num, result.mesh_num);
+
+    return result;
+}
+
+}

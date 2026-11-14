@@ -107,6 +107,7 @@ struct Vec4 {
     union {
         f32 raw[4];
         struct { f32 x, y, z, w; };
+        struct { f32 r, g, b, a; };
     };
 };
 using Quat = Vec4;
