@@ -60,6 +60,8 @@ int main() {
     camera->fovy = 60;
     camera->projection = CAMERA_PERSPECTIVE;
 
+    camera_pos = {0, 0, 8};
+
     constexpr i32 TEST_WIDTH = 0;
     constexpr i32 TEST_HEIGHT = 10;
     constexpr f32 TEST_DISTANCE = 3;
@@ -106,14 +108,14 @@ void handle_camera_control() {
         camera_yaw += delta.x * CAMERA_SENSIVITY;
         camera_pitch -= delta.y * CAMERA_SENSIVITY;
 
-        if (camera_pitch > 1.55f) camera_pitch = 1.55f;
-        if (camera_pitch < -1.55f) camera_pitch = -1.55f;
+        if (camera_pitch > MATH_PI / 2 - 0.01) camera_pitch = MATH_PI / 2 - 0.01;
+        if (camera_pitch < -MATH_PI / 2 + 0.01) camera_pitch = -MATH_PI / 2 + 0.01;
     }
 
     Vec3 forward = {
-        math_cos(camera_yaw) * math_cos(camera_pitch),
+        math_sin(camera_yaw) * math_cos(camera_pitch),
         math_sin(camera_pitch),
-        math_sin(camera_yaw) * math_cos(camera_pitch)
+        -math_cos(camera_yaw) * math_cos(camera_pitch)
     };
     forward = vec3_normalize(forward);
     Vec3 right = vec3_normalize(vec3_cross(forward, { 0, 1, 0 }));
