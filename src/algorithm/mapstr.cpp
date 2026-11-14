@@ -1,7 +1,6 @@
 module;
 
 #include <cassert>
-#include <cstdio>
 #include <cstring>
 
 export module mapstr;
@@ -49,9 +48,8 @@ template <typename T> void mapstr_init(MapStr<T> *mapstr, Arena *arena, i32 cap,
     mapstr->offset_of_key_field = offset_of_key_field;
 }
 
-template <typename T> T *mapstr_stub(MapStr<T> *mapstr) {
-    return &mapstr->data_buf[0];
-}
+constexpr const char *MAPSTR_STUB_KEY = "";
+template <typename T> constexpr T *MAPSTR_STUB(MapStr<T> *mapstr) { return &mapstr->data_buf[0]; }
 
 template <typename T> i32 mapstr_key_idx(MapStr<T> *mapstr, const char *key) {
     u32 hash = 0x811c9dc5;
@@ -76,7 +74,7 @@ template <typename T> i32 mapstr_calc_probe_num(MapStr<T> *mapstr, i32 from_idx,
 template <typename T> T *mapstr_create(MapStr<T> *mapstr, const char *key, T *instance_data = nullptr) {
     if (mapstr->len >= mapstr->cap) {
         log_debug("mapstr_create: create too much -> stub: len = [%d]", mapstr->len);
-        return mapstr_stub(mapstr);
+        return MAPSTR_STUB(mapstr);
     }
 
     const char *cur_key = (const char*)pool_create(&mapstr->string_buf_pool, (MapStrStringBuf*)key);
@@ -198,7 +196,7 @@ template <typename T> T *mapstr_get(MapStr<T> *mapstr, const char *key) {
 
         if (!meta.is_alive || meta.probe_num < cur_probe_num) {
             log_err("mapstr_get(): try to get not existed/dead key -> stub: key = [%s]", key);
-            return mapstr_stub(mapstr);
+            return MAPSTR_STUB(mapstr);
         }
 
         if (mapstr_match_key(meta.key, key)) { return &mapstr->data_buf[idx]; }
@@ -236,8 +234,8 @@ template <typename T> bool mapstr_iterate(MapStr<T> *mapstr, i32 *iter_idx, T **
     if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
-    T *instance = mapstr_stub(mapstr);
-    const char *key = 0;
+    T *instance = MAPSTR_STUB(mapstr);
+    const char *key = MAPSTR_STUB_KEY;
     bool valid = false;
 
     while (idx < mapstr->cap && !mapstr->meta_buf[idx].is_alive) { idx++; }

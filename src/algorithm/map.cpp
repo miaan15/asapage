@@ -35,9 +35,8 @@ template <typename T> void map_init(Map<T> *map, Arena *arena, i32 cap, i32 offs
     map->offset_of_key_field = offset_of_key_field;
 }
 
-template <typename T> T *map_stub(Map<T> *map) {
-    return &map->data_buf[0];
-}
+constexpr u64 MAP_STUB_KEY = 0;
+template <typename T> constexpr T *MAP_STUB(Map<T> *map) { return &map->data_buf[0]; }
 
 template <typename T> i32 map_key_idx(Map<T> *map, u64 key) {
     return (key * (u64)0x9e3779b9) % (map->cap - 1) + 1;
@@ -51,7 +50,7 @@ template <typename T> i32 map_calc_probe_num(Map<T> *map, i32 from_idx, i32 to_i
 template <typename T> T *map_create(Map<T> *map, u64 key, T *instance_data = nullptr) {
     if (map->len >= map->cap) {
         log_err("map_create: create too much -> stub: len = [%d]", map->len);
-        return map_stub(map);
+        return MAP_STUB(map);
     }
 
     u64 cur_key = key;
@@ -169,7 +168,7 @@ template <typename T> T *map_get(Map<T> *map, u64 key) {
 
         if (!meta.is_alive || meta.probe_num < cur_probe_num) {
             log_err("map_get(): try to get not existed/dead key -> stub: key = [%lu]", key);
-            return map_stub(map);
+            return MAP_STUB(map);
         }
 
         if (meta.key == key) { return &map->data_buf[idx]; }
@@ -207,8 +206,8 @@ template <typename T> bool map_iterate(Map<T> *map, i32 *iter_idx, T **r_instanc
     if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
-    T *instance = map_stub(map);
-    u64 key = 0;
+    T *instance = MAP_STUB(map);
+    u64 key = MAP_STUB_KEY;
     bool valid = false;
 
     while (idx < map->cap && !map->meta_buf[idx].is_alive) { idx++; }

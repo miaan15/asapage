@@ -66,15 +66,13 @@ struct ObjectDesc {
     Vec3 scale;
 };
 
-constexpr i32 OBJECT_CAP_DEFAULT = 1e5; // 100k
-
 struct ObjectSys {
     Pool<Object> object_pool;
     i32 object_num;
 };
 inline ObjectSys object_sys = {};
 
-void object_sys_init(i32 object_cap = OBJECT_CAP_DEFAULT) {
+void object_sys_init(i32 object_cap) {
     pool_init(&object_sys.object_pool, omni_arena_ptr, object_cap,
               offsetof(Object, idx), offsetof(Object, validate));
     object_sys.object_num = 0;

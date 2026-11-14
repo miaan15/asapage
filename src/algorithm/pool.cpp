@@ -42,14 +42,14 @@ template <typename T> void pool_init(Pool<T> *pool, Arena *arena, i32 cap,
     pool->offset_of_validate_field = offset_of_validate_field;
 }
 
-template <typename T> PoolKey pool_stub_key(Pool<T> *pool) { return PoolKey{0}; }
-template <typename T> T *pool_stub(Pool<T> *pool) { return &pool->data_buf[0]; }
+constexpr PoolKey POOL_STUB_KEY = PoolKey{0};
+template <typename T> constexpr T *POOL_STUB(Pool<T> *pool) { return &pool->data_buf[0]; }
 
 template <typename T> PoolKey pool_create(Pool<T> *pool, T *data = nullptr, T **out_instance = nullptr) {
     if (pool->len + 1 >= pool->cap) {
         log_err("pool_create: create too much -> stub: len = [%d]", pool->len);
-        if (out_instance != nullptr) { *out_instance = pool_stub(pool); }
-        return pool_stub_key(pool);
+        if (out_instance != nullptr) { *out_instance = POOL_STUB(pool); }
+        return POOL_STUB_KEY;
     }
 
     i32 target_idx = pool->freelist_head;
@@ -86,15 +86,15 @@ template <typename T> PoolKey pool_create(Pool<T> *pool, T *data = nullptr, T **
 template <typename T> T *pool_get(Pool<T> *pool, PoolKey key) {
     if (key.idx <= 0 || key.idx >= pool->max_idx) {
         log_err("pool_get(): try to get with key has out of bounds idx -> stub: key = [%d:%d]", key.idx, key.validate);
-        return pool_stub(pool);
+        return POOL_STUB(pool);
     }
     if (pool->flag_buf[key.idx] >= 0) {
         log_err("pool_get(): try to get dead instance -> stub: key = [%d:%d]", key.idx, key.validate);
-        return pool_stub(pool);
+        return POOL_STUB(pool);
     }
     if (key.validate != pool->validate_buf[key.idx]) {
         log_err("pool_get(): try to get with key not matching 'validate' -> stub: key = [%d:%d]", key.idx, key.validate);
-        return pool_stub(pool);
+        return POOL_STUB(pool);
     }
 
     return &pool->data_buf[key.idx];
@@ -123,7 +123,7 @@ template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_inst
     if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
-    T *instance = pool_stub(pool);
+    T *instance = POOL_STUB(pool);
     bool valid = false;
 
     if (!is_include_dead) {

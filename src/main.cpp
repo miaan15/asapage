@@ -25,7 +25,10 @@ Vec3 monkey_desired_move_dir;
 constexpr f32 MONKEY_MOVE_SPEED = 15;
 
 int main() {
-    engine_init();
+    EngineDesc engine_desc = ENGINE_DESC_DEFAULT;
+    engine_desc.window_width = 1600;
+    engine_desc.window_height = 900;
+    engine_init(engine_desc);
 
     ModelLoadResult monkey_model_res = model_load(file_asset_path("monkey.glb").c_str());
     monkey_mesh_key = monkey_model_res.mesh_keys[0];
@@ -46,7 +49,7 @@ int main() {
     camera->fovy = 60;
     camera->projection = CAMERA_PERSPECTIVE;
 
-    constexpr i32 TEST_WIDTH = 10;
+    constexpr i32 TEST_WIDTH = 0;
     constexpr i32 TEST_HEIGHT = 10;
     constexpr f32 TEST_DISTANCE = 3;
     ObjectKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
@@ -54,7 +57,7 @@ int main() {
                                     .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
     for (i32 i = 0; i < TEST_WIDTH; i++) {
         for (i32 j = 0; j < TEST_HEIGHT; j++) {
-            test_object_desc.pos = { TEST_DISTANCE * (i - (TEST_WIDTH / 2)), 0, TEST_DISTANCE * (j - (TEST_HEIGHT / 2)) };
+            test_object_desc.pos = { TEST_DISTANCE * (i - i32(TEST_WIDTH / 2)), 0, TEST_DISTANCE * (j - i32(TEST_HEIGHT / 2)) };
             test_object_keys[i + j * TEST_WIDTH] = object_create(&test_object_desc);
         }
     }
@@ -63,10 +66,10 @@ int main() {
         while (engine_on_tick()) {
             // input
             monkey_desired_move_dir = VEC3_ZERO;
-            if (IsKeyDown(KEY_W)) { monkey_desired_move_dir.z -= 1; }
-            if (IsKeyDown(KEY_A)) { monkey_desired_move_dir.x -= 1; }
-            if (IsKeyDown(KEY_S)) { monkey_desired_move_dir.z += 1; }
-            if (IsKeyDown(KEY_D)) { monkey_desired_move_dir.x += 1; }
+            if (input_is_key_on_tick(SCANCODE::W)) { monkey_desired_move_dir.z -= 1; }
+            if (input_is_key_on_tick(SCANCODE::A)) { monkey_desired_move_dir.x -= 1; }
+            if (input_is_key_on_tick(SCANCODE::S)) { monkey_desired_move_dir.z += 1; }
+            if (input_is_key_on_tick(SCANCODE::D)) { monkey_desired_move_dir.x += 1; }
             monkey_desired_move_dir = vec3_normalize(monkey_desired_move_dir);
 
             // monke
@@ -78,7 +81,6 @@ int main() {
             }
         }
         Vec3 monkey_pos = object_get(monkey_object_key)->pos;
-        camera->target = { monkey_pos.x, monkey_pos.y, monkey_pos.z };
 
         engine_draw();
     }

@@ -49,25 +49,11 @@ struct Material {
     f32 params[4]; // reserve what raylib provides
 };
 
-struct GraphicsAssetSys {
-    List<Texture> texture_list;
-    i32 texture_num;
-
-    List<Shader> shader_list;
-    i32 shader_num;
-
-    List<Material> material_list;
-    i32 material_num;
-
-    List<Mesh> mesh_list;
-    i32 mesh_num;
-};
-inline GraphicsAssetSys graphics_asset_sys = {};
-
-constexpr i32 TEXTURE_CAP_DEFAULT = 512;
-constexpr i32 SHADER_CAP_DEFAULT = 128;
+constexpr i32 TEXTURE_CAP_DEFAULT  = 512;
+constexpr i32 SHADER_CAP_DEFAULT   = 128;
 constexpr i32 MATERIAL_CAP_DEFAULT = 512;
-constexpr i32 MESH_CAP_DEFAULT = 512;
+constexpr i32 MESH_CAP_DEFAULT     = 512;
+constexpr i32 OBJECT_CAP_DEFAULT   = 100'000; // 100k
 
 constexpr TextureKey TEXTURE_STUB_KEY = { .idx = 0 };
 constexpr ShaderKey SHADER_STUB_KEY = { .idx = 0 };
@@ -86,48 +72,26 @@ constexpr MeshKey MESH_CONE_KEY = { .idx = 5 };
 constexpr MeshKey MESH_TORUS_KEY = { .idx = 6 };
 constexpr MeshKey MESH_HEMISPHERE_KEY = { .idx = 7 };
 
-void graphics_asset_sys_init(i32 texture = TEXTURE_CAP_DEFAULT,
-                             i32 shader = SHADER_CAP_DEFAULT,
-                             i32 material = MATERIAL_CAP_DEFAULT,
-                             i32 mesh = MESH_CAP_DEFAULT) {
-    list_init(&graphics_asset_sys.texture_list, omni_arena_ptr, texture);
-    list_init(&graphics_asset_sys.shader_list, omni_arena_ptr, shader);
-    list_init(&graphics_asset_sys.material_list, omni_arena_ptr, material);
-    list_init(&graphics_asset_sys.mesh_list, omni_arena_ptr, mesh);
+struct GraphicsAssetSys {
+    List<Texture> texture_list;
+    i32 texture_num;
 
-    // stub
-    list_stub(&graphics_asset_sys.texture_list); // TODO make it caro blackpink
+    List<Shader> shader_list;
+    i32 shader_num;
 
-    // defaults
-    Image default_image = GenImageColor(1, 1, WHITE);
-    Texture default_texture = LoadTextureFromImage(default_image);
-    UnloadImage(default_image);
-    list_create(&graphics_asset_sys.texture_list, &default_texture);
-    graphics_asset_sys.texture_num++;
+    List<Material> material_list;
+    i32 material_num;
 
-    Shader default_shader = LoadShader(0, 0);
-    list_create(&graphics_asset_sys.shader_list, &default_shader);
-    graphics_asset_sys.shader_num++;
+    List<Mesh> mesh_list;
+    i32 mesh_num;
+};
+inline GraphicsAssetSys graphics_asset_sys = {};
 
-    Material default_material = { .color = VEC4_ONE,
-                                  .texture_key = TEXTURE_DEFAULT_KEY,
-                                  .shader_key = SHADER_DEFAULT_KEY };
-    list_create(&graphics_asset_sys.material_list, &default_material);
-    graphics_asset_sys.material_num++;
-
-    Mesh default_meshes[] = {
-        GenMeshCube(1.0f, 1.0f, 1.0f),
-        GenMeshSphere(0.5f, 16, 16),
-        GenMeshPlane(1.0f, 1.0f, 1, 1),
-        GenMeshCylinder(0.5f, 1.0f, 16),
-        GenMeshCone(0.5f, 1.0f, 16),
-        GenMeshTorus(0.25f, 1.0f, 16, 16),
-        GenMeshHemiSphere(0.5f, 16, 16),
-    };
-    for (i32 i = 0; i < (i32)(sizeof(default_meshes) / sizeof(default_meshes[0])); i++) {
-        list_create(&graphics_asset_sys.mesh_list, &default_meshes[i]);
-        graphics_asset_sys.mesh_num++;
-    }
+void graphics_asset_sys_init(i32 texture_cap, i32 shader_cap, i32 material_cap, i32 mesh_cap) {
+    list_init(&graphics_asset_sys.texture_list, omni_arena_ptr, texture_cap);
+    list_init(&graphics_asset_sys.shader_list, omni_arena_ptr, shader_cap);
+    list_init(&graphics_asset_sys.material_list, omni_arena_ptr, material_cap);
+    list_init(&graphics_asset_sys.mesh_list, omni_arena_ptr, mesh_cap);
 }
 
 TextureKey texture_create(const char *path, Texture *out_texture = nullptr) {
@@ -201,7 +165,7 @@ ModelLoadResult model_load(const char *path, Arena *arena = tick_arena_ptr) {
 Texture *texture_get(TextureKey key) {
     if (key.idx < 0 || key.idx > graphics_asset_sys.texture_num) {
         log_err("texture_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
-        return list_stub(&graphics_asset_sys.texture_list);
+        return LIST_STUB(&graphics_asset_sys.texture_list);
     }
     return list_get(&graphics_asset_sys.texture_list, key.idx);
 }
@@ -209,7 +173,7 @@ Texture *texture_get(TextureKey key) {
 Shader *shader_get(ShaderKey key) {
     if (key.idx < 0 || key.idx > graphics_asset_sys.shader_num) {
         log_err("shader_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
-        return list_stub(&graphics_asset_sys.shader_list);
+        return LIST_STUB(&graphics_asset_sys.shader_list);
     }
     return list_get(&graphics_asset_sys.shader_list, key.idx);
 }
@@ -217,7 +181,7 @@ Shader *shader_get(ShaderKey key) {
 Material *material_get(MaterialKey key) {
     if (key.idx < 0 || key.idx > graphics_asset_sys.material_num) {
         log_err("material_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
-        return list_stub(&graphics_asset_sys.material_list);
+        return LIST_STUB(&graphics_asset_sys.material_list);
     }
     return list_get(&graphics_asset_sys.material_list, key.idx);
 }
@@ -225,7 +189,7 @@ Material *material_get(MaterialKey key) {
 Mesh *mesh_get(MeshKey key) {
     if (key.idx < 0 || key.idx > graphics_asset_sys.mesh_num) {
         log_err("mesh_get(): try to get with key has idx out of bounds -> stub: key = [%d]", key.idx);
-        return list_stub(&graphics_asset_sys.mesh_list);
+        return LIST_STUB(&graphics_asset_sys.mesh_list);
     }
     return list_get(&graphics_asset_sys.mesh_list, key.idx);
 }

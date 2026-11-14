@@ -24,30 +24,40 @@ inline EngineConfigs engine_configs = {
     .tps = 20
 };
 
-constexpr i32 DEFAULT_INIT_WINDOW_WIDTH = 1280;
-constexpr i32 DEFAULT_INIT_WINDOW_HEIGHT = 720;
-constexpr usize DEFAULT_OMNI_ARENA_SIZE = 700 << 20; // 700 MB
-constexpr usize DEFAULT_TICK_ARENA_SIZE = 100 << 20; // 100 MB
-constexpr usize DEFAULT_FRAME_ARENA_SIZE = 100 << 20; // 100 MB
+constexpr i32 WINDOW_WIDTH_DEFAULT = 1280;
+constexpr i32 WINDOW_HEIGHT_DEFAULT = 720;
+constexpr usize OMNI_ARENA_SIZE_DEFAULT = 700 << 20; // 700 MB
+constexpr usize TICK_ARENA_SIZE_DEFAULT = 100 << 20; // 100 MB
+constexpr usize FRAME_ARENA_SIZE_DEFAULT = 100 << 20; // 100 MB
+
 struct EngineDesc {
-    i32 init_window_width, init_window_height;
-    const char *init_window_name;
+    i32 window_width, window_height;
+    const char *window_name;
     i64 omni_arena_size;
     i64 tick_arena_size;
     i64 frame_arena_size;
 };
 
-void engine_init(EngineDesc *desc = nullptr) {
-    i32 init_window_width = desc == nullptr ? DEFAULT_INIT_WINDOW_WIDTH : desc->init_window_width;
-    i32 init_window_height = desc == nullptr ? DEFAULT_INIT_WINDOW_HEIGHT : desc->init_window_height;
-    const char *init_window_name = desc == nullptr ? "" : desc->init_window_name;
-    usize omni_arena_size = desc == nullptr ? DEFAULT_OMNI_ARENA_SIZE : desc->omni_arena_size;
-    usize tick_arena_size = desc == nullptr ? DEFAULT_TICK_ARENA_SIZE : desc->tick_arena_size;
-    usize frame_arena_size = desc == nullptr ? DEFAULT_FRAME_ARENA_SIZE : desc->frame_arena_size;
+constexpr EngineDesc ENGINE_DESC_DEFAULT = {
+    .window_width     = WINDOW_WIDTH_DEFAULT,
+    .window_height    = WINDOW_HEIGHT_DEFAULT,
+    .window_name      = "",
+    .omni_arena_size  = OMNI_ARENA_SIZE_DEFAULT,
+    .tick_arena_size  = TICK_ARENA_SIZE_DEFAULT,
+    .frame_arena_size = FRAME_ARENA_SIZE_DEFAULT,
+};
+
+void engine_init(EngineDesc desc = ENGINE_DESC_DEFAULT) {
+    i32 window_width        = desc.window_width;
+    i32 window_height       = desc.window_height;
+    const char *window_name = desc.window_name != nullptr ? desc.window_name : "";
+    usize omni_arena_size   = desc.omni_arena_size;
+    usize tick_arena_size   = desc.tick_arena_size;
+    usize frame_arena_size  = desc.frame_arena_size;
 
     // raylib
     SetConfigFlags(FLAG_WINDOW_UNDECORATED);
-    InitWindow(init_window_width, init_window_height, init_window_name);
+    InitWindow(window_width, window_height, window_name);
 
     // arena
     arena_init(&omni_arena, omni_arena_size);
@@ -131,6 +141,8 @@ bool engine_on_tick() {
 void engine_draw() {
     // interpolate
     interpolate_alpha = tick_accumulated_time / time_delta;
+
+    graphics_update_frame();
 
     BeginDrawing();
     ClearBackground(BLACK);
