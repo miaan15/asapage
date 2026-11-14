@@ -8,8 +8,171 @@ import define;
 import mem;
 import internal;
 import log;
+import math;
 
 export namespace asapage {
+
+enum struct SCANCODE;
+enum struct MOUSE_BUTTON;
+
+constexpr int INPUT_MAX_KEYBOARD_KEY_NUM = 512;
+constexpr int INPUT_MAX_MOUSE_BUTTON_NUM = 8;
+
+// the input has "cache" mechanism
+// user's input can only be read in frame update, but usually input used for tick update (for gameplay/physics/...).
+// "cache" is when the input between 2 tick preserved until the next tick happens
+// # this was once built on SDL, but now raylib handle most of stuff, so this only has cache left
+struct InputSys {
+    u8 *cache_keyboard_state; // state as bitmask: 0-down, 1-on, 2-up
+    u8 *tick_keyboard_state;
+    int keyboard_key_num;
+
+    u8 *cache_mouse_state;
+    u8 *tick_mouse_state;
+    int mouse_button_num;
+};
+inline InputSys input_sys = {};
+
+constexpr u8 _INPUT_CACHE_DOWN_STATE = 0b001;
+constexpr u8 _INPUT_CACHE_ON_STATE = 0b010;
+constexpr u8 _INPUT_CACHE_UP_STATE = 0b100;
+
+void input_sys_init() {
+    input_sys.keyboard_key_num = INPUT_MAX_KEYBOARD_KEY_NUM;
+    input_sys.cache_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.keyboard_key_num * sizeof(u8));
+    input_sys.tick_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.keyboard_key_num * sizeof(u8));
+
+    input_sys.mouse_button_num = INPUT_MAX_MOUSE_BUTTON_NUM;
+    input_sys.cache_mouse_state = (u8*)arena_alloc(&omni_arena, input_sys.mouse_button_num * sizeof(u8));
+    input_sys.tick_mouse_state  = (u8*)arena_alloc(&omni_arena, input_sys.mouse_button_num * sizeof(u8));
+}
+
+// helper
+bool _input_has_bit(u8 x, u8 m) { return (x & m) != 0; } // ONLY USE FOR 1-BIT BITMASK
+
+bool _input_cache_is_down(u8 state) { return _input_has_bit(state, _INPUT_CACHE_DOWN_STATE); }
+bool _input_cache_is_on(u8 state) { return _input_has_bit(state, _INPUT_CACHE_ON_STATE); }
+bool _input_cache_is_up(u8 state) { bool is_on = _input_has_bit(state, _INPUT_CACHE_ON_STATE);
+    bool is_up = _input_has_bit(state, _INPUT_CACHE_UP_STATE);
+    return is_up && !is_on;
+}
+
+void _input_sync_tick_buffer(u8 *cache, u8 *tick, i32 count) {
+    for (i32 i = 0; i < count; i++) {
+        u8 state = cache[i];
+        tick[i] = (_input_cache_is_down(state) ? _INPUT_CACHE_DOWN_STATE : 0) |
+                  (_input_cache_is_on(state)   ? _INPUT_CACHE_ON_STATE   : 0) |
+                  (_input_cache_is_up(state)   ? _INPUT_CACHE_UP_STATE   : 0);
+
+        // if a button/key is "down" and "up" before a tick, delay the "up" state for 1 tick
+        cache[i] = (_input_has_bit(state, _INPUT_CACHE_ON_STATE) &&
+                    _input_has_bit(state, _INPUT_CACHE_UP_STATE))
+                       ? _INPUT_CACHE_UP_STATE
+                       : 0;
+    }
+}
+
+// keyboard
+bool input_is_key_down(SCANCODE scancode) {
+    return IsKeyPressed((i32)scancode);
+}
+
+bool input_is_key_on(SCANCODE scancode) {
+    return IsKeyDown((i32)scancode);
+}
+
+bool input_is_key_up(SCANCODE scancode) {
+    return IsKeyReleased((i32)scancode);
+}
+
+bool input_is_key_down_tick(SCANCODE scancode) {
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_DOWN_STATE);
+}
+
+bool input_is_key_on_tick(SCANCODE scancode) {
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_ON_STATE);
+}
+
+bool input_is_key_up_tick(SCANCODE scancode) {
+    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_UP_STATE);
+}
+
+// mouse
+bool input_is_mouse_down(MOUSE_BUTTON button) {
+    return IsMouseButtonPressed((i32)button);
+}
+
+bool input_is_mouse_on(MOUSE_BUTTON button) {
+    return IsMouseButtonDown((i32)button);
+}
+
+bool input_is_mouse_up(MOUSE_BUTTON button) {
+    return IsMouseButtonReleased((i32)button);
+}
+
+Vec2 input_mouse_position() {
+    Vec2 res; Vector2 res_rl = GetMousePosition();
+    mem_copy(&res, &res_rl, sizeof(Vec2));
+    return res;
+}
+
+Vec2 input_mouse_delta() {
+    Vec2 res; Vector2 res_rl = GetMouseDelta();
+    mem_copy(&res, &res_rl, sizeof(Vec2));
+    return res;
+}
+
+f32 input_mouse_wheel() {
+    return GetMouseWheelMove();
+}
+
+//
+void input_update_frame() {
+    // keyboard
+    for (i32 i = 0; i < input_sys.keyboard_key_num; i++) {
+        bool is_down = input_is_key_down((SCANCODE)i);
+        bool is_on   = input_is_key_on((SCANCODE)i);
+        bool is_up   = input_is_key_up((SCANCODE)i);
+        input_sys.cache_keyboard_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
+                                             (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
+                                             (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
+    }
+
+    // mouse
+    for (i32 i = 0; i < input_sys.mouse_button_num; i++) {
+        bool is_down = input_is_mouse_down((MOUSE_BUTTON)i);
+        bool is_on   = input_is_mouse_on((MOUSE_BUTTON)i);
+        bool is_up   = input_is_mouse_up((MOUSE_BUTTON)i);
+        input_sys.cache_mouse_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
+                                          (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
+                                          (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
+    }
+}
+
+// call this after all tick update input request
+void input_update_tick() {
+    _input_sync_tick_buffer(input_sys.cache_keyboard_state, input_sys.tick_keyboard_state, input_sys.keyboard_key_num);
+    _input_sync_tick_buffer(input_sys.cache_mouse_state, input_sys.tick_mouse_state, input_sys.mouse_button_num);
+}
+
+bool _input_cache_is_key_down(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    bool is_cache_key_down = _input_has_bit(cache_state, _INPUT_CACHE_DOWN_STATE);
+    return is_cache_key_down;
+}
+
+bool _input_cache_is_key_on(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
+    return is_cache_key_on;
+}
+
+bool _input_cache_is_key_up(usize idx) {
+    u8 cache_state = input_sys.cache_keyboard_state[idx];
+    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
+    bool is_cache_key_up = _input_has_bit(cache_state, _INPUT_CACHE_UP_STATE);
+    return is_cache_key_up && !is_cache_key_on;
+}
 
 enum struct SCANCODE {
     NIL = KEY_NULL,
@@ -135,102 +298,14 @@ enum struct SCANCODE {
     RGUI = KEY_RIGHT_SUPER,
 };
 
-constexpr int INPUT_MAX_KEYBOARD_KEY_NUM = 512;
-
-// the input has "cache" mechanism
-// user's input can only be read in frame update, but usually input used for tick update (for gameplay/physics/...).
-// "cache" is when the input between 2 tick preserved until the next tick happens
-// # this was once built on SDL, but now raylib handle most of stuff, so this only has cache left
-struct InputSys {
-    u8 *cache_keyboard_state; // state as bitmask: 0-down, 1-on, 2-up
-    u8 *tick_keyboard_state;
-    int numkeys;
+enum struct MOUSE_BUTTON {
+    LEFT    = MOUSE_BUTTON_LEFT,
+    RIGHT   = MOUSE_BUTTON_RIGHT,
+    MIDDLE  = MOUSE_BUTTON_MIDDLE,
+    SIDE    = MOUSE_BUTTON_SIDE,
+    EXTRA   = MOUSE_BUTTON_EXTRA,
+    FORWARD = MOUSE_BUTTON_FORWARD,
+    BACK    = MOUSE_BUTTON_BACK,
 };
-inline InputSys input_sys = {};
-
-constexpr u8 _INPUT_CACHE_DOWN_STATE = 0b001;
-constexpr u8 _INPUT_CACHE_ON_STATE = 0b010;
-constexpr u8 _INPUT_CACHE_UP_STATE = 0b100;
-bool _input_has_bit(u8 x, u8 m) { return (x & m) != 0; } // ONLY USE FOR 1-BIT BITMASK
-
-void input_sys_init() {
-    input_sys.numkeys = INPUT_MAX_KEYBOARD_KEY_NUM;
-    input_sys.cache_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys * sizeof(u8));
-    input_sys.tick_keyboard_state = (u8*)arena_alloc(&omni_arena, input_sys.numkeys * sizeof(u8));
-}
-
-bool input_is_key_down(SCANCODE scancode) {
-    return IsKeyPressed((i32)scancode);
-}
-
-bool input_is_key_on(SCANCODE scancode) {
-    return IsKeyDown((i32)scancode);
-}
-
-bool input_is_key_up(SCANCODE scancode) {
-    return IsKeyReleased((i32)scancode);
-}
-
-bool input_is_key_down_tick(SCANCODE scancode) {
-    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_DOWN_STATE);
-}
-
-bool input_is_key_on_tick(SCANCODE scancode) {
-    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_ON_STATE);
-}
-
-bool input_is_key_up_tick(SCANCODE scancode) {
-    return _input_has_bit(input_sys.tick_keyboard_state[(i32)scancode], _INPUT_CACHE_UP_STATE);
-}
-
-void input_update_frame() {
-    for (i32 i = 0; i < input_sys.numkeys; i++) {
-        bool is_down = input_is_key_down((SCANCODE)i);
-        bool is_on   = input_is_key_on((SCANCODE)i);
-        bool is_up   = input_is_key_up((SCANCODE)i);
-        input_sys.cache_keyboard_state[i] |= (is_down ? _INPUT_CACHE_DOWN_STATE : 0) |
-                                             (is_on   ? _INPUT_CACHE_ON_STATE   : 0) |
-                                             (is_up   ? _INPUT_CACHE_UP_STATE   : 0);
-    }
-}
-
-bool _input_cache_is_key_down(usize idx);
-bool _input_cache_is_key_on(usize idx);
-bool _input_cache_is_key_up(usize idx);
-
-// call this after all tick update input request
-void input_update_tick() {
-    for (i32 i = 0; i < input_sys.numkeys; i++) {
-        input_sys.tick_keyboard_state[i] = 0;
-        input_sys.tick_keyboard_state[i] |= (_input_cache_is_key_down(i) ? _INPUT_CACHE_DOWN_STATE : 0) |
-                                            (_input_cache_is_key_on(i)   ? _INPUT_CACHE_ON_STATE   : 0) |
-                                            (_input_cache_is_key_up(i)   ? _INPUT_CACHE_UP_STATE   : 0);
-
-        // if a key is "down" and "up" before a tick, delay the "up" state for 1 tick so that "down" and "up" not happens in single tick
-        input_sys.cache_keyboard_state[i] =
-            _input_has_bit(input_sys.cache_keyboard_state[i], _INPUT_CACHE_ON_STATE) &&
-            _input_has_bit(input_sys.cache_keyboard_state[i], _INPUT_CACHE_UP_STATE) ?
-                _INPUT_CACHE_UP_STATE : 0;
-    }
-}
-
-bool _input_cache_is_key_down(usize idx) {
-    u8 cache_state = input_sys.cache_keyboard_state[idx];
-    bool is_cache_key_down = _input_has_bit(cache_state, _INPUT_CACHE_DOWN_STATE);
-    return is_cache_key_down;
-}
-
-bool _input_cache_is_key_on(usize idx) {
-    u8 cache_state = input_sys.cache_keyboard_state[idx];
-    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
-    return is_cache_key_on;
-}
-
-bool _input_cache_is_key_up(usize idx) {
-    u8 cache_state = input_sys.cache_keyboard_state[idx];
-    bool is_cache_key_on = _input_has_bit(cache_state, _INPUT_CACHE_ON_STATE);
-    bool is_cache_key_up = _input_has_bit(cache_state, _INPUT_CACHE_UP_STATE);
-    return is_cache_key_up && !is_cache_key_on;
-}
 
 }
