@@ -36,10 +36,7 @@ struct Object {
 
     MeshKey mesh_key;
 
-    MaterialKey material_key;
-    Vec4 color;
-    TextureKey texture_key;
-    ShaderKey shader_key;
+    Material material;
 
     Vec3 pos;
     Vec4 rot;
@@ -54,13 +51,7 @@ struct Object {
 
 struct ObjectDesc {
     MeshKey mesh_key;
-
     MaterialKey material_key;
-
-    Vec4 color;             bool has_color;
-    TextureKey texture_key; bool has_texture;
-    ShaderKey shader_key;   bool has_shader;
-
     Vec3 pos;
     Vec4 rot;
     Vec3 scale;
@@ -80,39 +71,25 @@ void object_sys_init(i32 object_cap) {
     // TODO stub is all stub and pos = 0
 }
 
-ObjectKey object_create(ObjectDesc *desc = nullptr, Object *out_object = nullptr) {
-    Object new_object;
-    if (desc != nullptr) {
-        // FIXME this should handle default and stub value instead of just assign right like this
-        new_object.mesh_key = desc->mesh_key;
+ObjectKey object_create(ObjectDesc *desc = nullptr, Object **out_object = nullptr) {
+    Object *new_object;
+    PoolKey pool_key = pool_create(&object_sys.object_pool, (Object*)nullptr, &new_object);
+    new_object->mesh_key = desc->mesh_key;
+    new_object->material = *material_get(desc->material_key);
+    new_object->pos = new_object->last_tick_pos = new_object->frame_pos = desc->pos;
+    new_object->rot = new_object->last_tick_rot = new_object->frame_rot = desc->rot;
+    new_object->scale = desc->scale;
 
-        Material *material = material_get(desc->material_key);
-        new_object.material_key = desc->material_key;
-        new_object.color = material->color;
-        new_object.texture_key = material->texture_key;
-        new_object.shader_key = material->shader_key;
-
-        if (desc->has_color) { new_object.color = desc->color; }
-        if (desc->has_texture) { new_object.texture_key = desc->texture_key; }
-        if (desc->has_shader) { new_object.shader_key = desc->shader_key; }
-
-        new_object.pos = new_object.last_tick_pos = new_object.frame_pos = desc->pos;
-        new_object.rot = new_object.last_tick_rot = new_object.frame_rot = desc->rot;
-        new_object.scale = desc->scale;
-    } else { mem_zero(&new_object, sizeof(Object)); }
-
-    PoolKey pool_key = pool_create(&object_sys.object_pool, &new_object, &out_object);
     object_sys.object_num++;
 
-    log_debug("Created Object [%d:%d]: mesh_key = [%d]; material_key = [%d]; color = [%.1f, %.1f, %.1f, %.1f]; texture = [%d]; shader = [%d]; pos = [%.1f, %.1f, %.1f]; rot = [%.1f, %.1f, %.1f, %.1f]; scale = [%.1f, %.1f, %.1f]",
+    if (out_object != nullptr) { *out_object = new_object; }
+
+    log_debug("Created Object [%d:%d]: mesh_key = [%d]; material_key = [%d]; pos = [%.1f, %.1f, %.1f]; rot = [%.1f, %.1f, %.1f, %.1f]; scale = [%.1f, %.1f, %.1f]",
               pool_key.idx, pool_key.validate,
-              new_object.mesh_key.idx, new_object.material_key.idx,
-              new_object.color.r, new_object.color.g, new_object.color.b, new_object.color.a,
-              new_object.texture_key.idx,
-              new_object.shader_key.idx,
-              new_object.pos.x, new_object.pos.y, new_object.pos.z,
-              new_object.rot.x, new_object.rot.y, new_object.rot.z, new_object.rot.w,
-              new_object.scale.x, new_object.scale.y, new_object.scale.z);
+              new_object->mesh_key.idx, desc->material_key.idx,
+              new_object->pos.x, new_object->pos.y, new_object->pos.z,
+              new_object->rot.x, new_object->rot.y, new_object->rot.z, new_object->rot.w,
+              new_object->scale.x, new_object->scale.y, new_object->scale.z);
 
     return ObjectKey{ .idx = pool_key.idx, .validate = pool_key.validate };
 }
@@ -152,24 +129,45 @@ void object_update_tick() {
 void object_draw() {
     constexpr usize MAX_RL_MATERIAL_MAPS = MATERIAL_MAP_BRDF + 1;
     ::MaterialMap maps[MAX_RL_MATERIAL_MAPS] = {};
-    ::Material rl_material = { .maps = maps };
+    RlMaterial rl_material = { .maps = maps };
 
     i32 _pool_idx = 0;
     Object *iter_object;
     while (pool_iterate(&object_sys.object_pool, &_pool_idx, &iter_object, nullptr)) {
-        Mesh *mesh = mesh_get(iter_object->mesh_key);
-        Vec4 color = iter_object->color;
-        Texture *texture = texture_get(iter_object->texture_key);
-        Shader *shader = shader_get(iter_object->shader_key);
+        RlMesh *mesh = mesh_get(iter_object->mesh_key);
+        Material *material = &iter_object->material;
+        RlShader *shader = shader_get(material->shader_key);
 
         rl_material.shader = *shader;
-        rl_material.maps[MATERIAL_MAP_DIFFUSE].texture = *texture;
-        rl_material.maps[MATERIAL_MAP_DIFFUSE].color = Color{
-            (u8)(color.x * 255.0f),
-            (u8)(color.y * 255.0f),
-            (u8)(color.z * 255.0f),
-            (u8)(color.w * 255.0f)
-        };
+
+        if (material->shader_key.idx == SHADER_UNLIT_KEY.idx) {
+            ShaderUnlitData *data = (ShaderUnlitData *)material->data;
+            RlTexture *texture = texture_get(data->texture_key);
+
+            rl_material.maps[MATERIAL_MAP_DIFFUSE].texture = *texture;
+            rl_material.maps[MATERIAL_MAP_DIFFUSE].color = Color{
+                (u8)(data->color.x * 255.0f),
+                (u8)(data->color.y * 255.0f),
+                (u8)(data->color.z * 255.0f),
+                255
+            };
+        } else if (material->shader_key.idx == SHADER_LIT_KEY.idx) {
+            ShaderLitData *data = (ShaderLitData *)material->data;
+            RlTexture *texture = texture_get(data->texture_key);
+
+            rl_material.maps[MATERIAL_MAP_ALBEDO].texture = *texture;
+            rl_material.maps[MATERIAL_MAP_ALBEDO].color = Color{
+                (u8)(data->albedo.x * 255.0f),
+                (u8)(data->albedo.y * 255.0f),
+                (u8)(data->albedo.z * 255.0f),
+                255
+            };
+            rl_material.maps[MATERIAL_MAP_METALNESS].value = data->metallic;
+            rl_material.maps[MATERIAL_MAP_ROUGHNESS].value = 1.0f - data->smoothness;
+        } else {
+            rl_material.maps[MATERIAL_MAP_DIFFUSE].texture = *texture_get(TEXTURE_DEFAULT_KEY);
+            rl_material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+        }
 
         Mat4 transform = mat4_transpose(
             mat4_scale(iter_object->scale) *

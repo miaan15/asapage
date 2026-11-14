@@ -15,10 +15,6 @@ import mapstr;
 
 using namespace asapage;
 
-MeshKey monkey_mesh_key, box_mesh_key;
-ObjectKey monkey_object_key;
-MaterialKey material_key;
-
 Vec3 monkey_look_dir;
 Vec3 monkey_desired_move_dir;
 
@@ -42,16 +38,14 @@ int main() {
     engine_init(engine_desc);
 
     ModelLoadResult monkey_model_res = model_load(file_asset_path("monkey.glb").c_str());
-    monkey_mesh_key = monkey_model_res.mesh_keys[0];
+    MeshKey monkey_mesh_key = monkey_model_res.mesh_keys[0];
 
     ModelLoadResult box_model_res = model_load(file_asset_path("box.glb").c_str());
-    box_mesh_key = box_model_res.mesh_keys[0];
+    MeshKey box_mesh_key = box_model_res.mesh_keys[0];
 
-    material_key = material_create({ 1, 0, 0, 1 });
-
-    ObjectDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
+    ObjectDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_UNLIT_DEFAULT_KEY,
                                       .pos = VEC3_ZERO, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
-    monkey_object_key = object_create(&monkey_object_desc);
+    ObjectKey monkey_object_key = object_create(&monkey_object_desc);
 
     camera = &graphics_sys.camera;
     // camera->position = { 0, 5, 8 };
@@ -59,14 +53,14 @@ int main() {
     camera->up = { 0, 1, 0 };
     camera->fovy = 60;
     camera->projection = CAMERA_PERSPECTIVE;
-
+    //
     camera_pos = {0, 0, 8};
 
     constexpr i32 TEST_WIDTH = 0;
     constexpr i32 TEST_HEIGHT = 10;
     constexpr f32 TEST_DISTANCE = 3;
     ObjectKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
-    ObjectDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = material_key,
+    ObjectDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_UNLIT_DEFAULT_KEY,
                                     .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
     for (i32 i = 0; i < TEST_WIDTH; i++) {
         for (i32 j = 0; j < TEST_HEIGHT; j++) {
