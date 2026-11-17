@@ -43,7 +43,7 @@ int main() {
     ModelLoadResult box_model_res = model_load(file_asset_path("box.glb").c_str());
     MeshKey box_mesh_key = box_model_res.mesh_keys[0];
 
-    ObjectDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_UNLIT_DEFAULT_KEY,
+    ObjectDesc monkey_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_DEFAULT_KEY,
                                       .pos = VEC3_ZERO, .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
     ObjectKey monkey_object_key = object_create(&monkey_object_desc);
 
@@ -56,11 +56,16 @@ int main() {
     //
     camera_pos = {0, 0, 8};
 
-    constexpr i32 TEST_WIDTH = 0;
-    constexpr i32 TEST_HEIGHT = 10;
+    graphics_sys.ambient = { 0.1, 0.1, 0.1, 1 };
+    graphics_sys.light_list[0] = { .enabled = 1, .dir = { 0, -1, 0 }, .color = {0.3, 0.3, 0.3, 1} };
+    graphics_sys.light_list[1] = { .enabled = 1, .dir = { 0, 0, 1 }, .color = {1, 1, 0.5, 1} };
+    graphics_sys.light_list[2] = { .enabled = 1, .dir = { 0, 0, -1 }, .color = {0.3, 0.3, 0.1, 1} };
+
+    constexpr i32 TEST_WIDTH = 5;
+    constexpr i32 TEST_HEIGHT = 5;
     constexpr f32 TEST_DISTANCE = 3;
     ObjectKey test_object_keys[TEST_WIDTH * TEST_HEIGHT];
-    ObjectDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_UNLIT_DEFAULT_KEY,
+    ObjectDesc test_object_desc = { .mesh_key = monkey_mesh_key, .material_key = MATERIAL_DEFAULT_KEY,
                                     .rot = QUAT_IDENTITY, .scale = VEC3_ONE };
     for (i32 i = 0; i < TEST_WIDTH; i++) {
         for (i32 j = 0; j < TEST_HEIGHT; j++) {
@@ -97,15 +102,6 @@ int main() {
 }
 
 void handle_camera_control() {
-    if (input_is_mouse_on(MOUSE_BUTTON::RIGHT)) {
-        Vec2 delta = input_mouse_delta();
-        camera_yaw += delta.x * CAMERA_SENSIVITY;
-        camera_pitch -= delta.y * CAMERA_SENSIVITY;
-
-        if (camera_pitch > MATH_PI / 2 - 0.01) camera_pitch = MATH_PI / 2 - 0.01;
-        if (camera_pitch < -MATH_PI / 2 + 0.01) camera_pitch = -MATH_PI / 2 + 0.01;
-    }
-
     Vec3 forward = {
         math_sin(camera_yaw) * math_cos(camera_pitch),
         math_sin(camera_pitch),
@@ -114,16 +110,26 @@ void handle_camera_control() {
     forward = vec3_normalize(forward);
     Vec3 right = vec3_normalize(vec3_cross(forward, { 0, 1, 0 }));
 
-    camera_desired_move_dir = VEC3_ZERO;
-    if (input_is_key_on(SCANCODE::W)) { camera_desired_move_dir += forward; }
-    if (input_is_key_on(SCANCODE::S)) { camera_desired_move_dir -= forward; }
-    if (input_is_key_on(SCANCODE::D)) { camera_desired_move_dir += right; }
-    if (input_is_key_on(SCANCODE::A)) { camera_desired_move_dir -= right; }
-    if (input_is_key_on(SCANCODE::E)) { camera_desired_move_dir.y += 1; }
-    if (input_is_key_on(SCANCODE::Q)) { camera_desired_move_dir.y -= 1; }
-    camera_desired_move_dir = vec3_normalize(camera_desired_move_dir);
+    if (input_is_mouse_on(MOUSE_BUTTON::RIGHT)) {
+        Vec2 delta = input_mouse_delta();
+        camera_yaw += delta.x * CAMERA_SENSIVITY;
+        camera_pitch -= delta.y * CAMERA_SENSIVITY;
 
-    camera_pos += camera_desired_move_dir * CAMERA_MOVE_SPEED * time_realtime_delta;
+        if (camera_pitch > MATH_PI / 2 - 0.01) camera_pitch = MATH_PI / 2 - 0.01;
+        if (camera_pitch < -MATH_PI / 2 + 0.01) camera_pitch = -MATH_PI / 2 + 0.01;
+
+        //
+        camera_desired_move_dir = VEC3_ZERO;
+        if (input_is_key_on(SCANCODE::W)) { camera_desired_move_dir += forward; }
+        if (input_is_key_on(SCANCODE::S)) { camera_desired_move_dir -= forward; }
+        if (input_is_key_on(SCANCODE::D)) { camera_desired_move_dir += right; }
+        if (input_is_key_on(SCANCODE::A)) { camera_desired_move_dir -= right; }
+        if (input_is_key_on(SCANCODE::E)) { camera_desired_move_dir.y += 1; }
+        if (input_is_key_on(SCANCODE::Q)) { camera_desired_move_dir.y -= 1; }
+        camera_desired_move_dir = vec3_normalize(camera_desired_move_dir);
+
+        camera_pos += camera_desired_move_dir * CAMERA_MOVE_SPEED * time_realtime_delta;
+    }
 
     Vec3 target = camera_pos + forward;
     mem_copy(&camera->position, &camera_pos, sizeof(Vec3));
