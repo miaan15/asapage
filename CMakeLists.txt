@@ -140,6 +140,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     raylib
 )
 
-if (WIN32)
+if(WIN32)
     target_link_libraries(asapage PRIVATE dbghelp)
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if(CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+            target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-g -gcodeview>)
+            target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-Wl,/DEBUG>)
+        else()
+            target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-g -gcodeview>)
+            target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-Wl,--pdb=>)
+        endif()
+    endif()
 endif()

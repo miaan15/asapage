@@ -119,7 +119,7 @@ template <typename T> bool pool_destroy(Pool<T> *pool, PoolKey key) {
     return true;
 }
 
-template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_instance, i8 *r_validate, bool is_include_dead = false) {
+template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_instance, PoolKey *r_key, bool is_include_dead = false) {
     if (*iter_idx <= 0) { *iter_idx = 1; }
 
     i32 idx = *iter_idx;
@@ -139,6 +139,7 @@ template <typename T> bool pool_iterate(Pool<T> *pool, i32 *iter_idx, T **r_inst
 
     *iter_idx = idx;
     if (r_instance != nullptr) { *r_instance = instance; }
+    if (r_key != nullptr) { *r_key = PoolKey{ .idx = idx - 1, .validate = pool->validate_buf[idx - 1] }; }
 
     return valid;
 }

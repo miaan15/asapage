@@ -110,7 +110,7 @@ bool input_is_mouse_up(MOUSE_BUTTON button) {
     return IsMouseButtonReleased((i32)button);
 }
 
-Vec2 input_mouse_position() {
+Vec2 input_mouse_pos() {
     Vec2 res; Vector2 res_rl = GetMousePosition();
     mem_copy(&res, &res_rl, sizeof(Vec2));
     return res;

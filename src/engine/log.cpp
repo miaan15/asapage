@@ -4,16 +4,30 @@ module;
 #include <cstdarg>
 #include <cstdio>
 
-#if defined(PLATFORM_LINUX) && defined(BUILD_DEBUG)
+#if defined(BUILD_DEBUG)
     #define LOG_USE_BACKTRACE
 #endif
 
 #ifdef LOG_USE_BACKTRACE
-#include <dlfcn.h>
-#include <execinfo.h>
-#include <unistd.h>
-#include <cstdint>
-#include <cstring>
+#if defined(PLATFORM_LINUX)
+    #include <dlfcn.h>
+    #include <execinfo.h>
+    #include <unistd.h>
+    #include <cstdint>
+    #include <cstring>
+#elif defined(PLATFORM_WINDOWS)
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+    #include <dbghelp.h>
+    #include <cstdint>
+    #include <cstring>
+    #pragma comment(lib, "dbghelp.lib")
+#endif
 #endif
 
 export module log;
@@ -50,6 +64,8 @@ inline const char* log_level_str(int level) {
 
 inline void print_stacktrace(FILE* stream) {
 #ifdef LOG_USE_BACKTRACE
+
+#if defined(PLATFORM_LINUX)
     void* array[32];
     int size = backtrace(array, 32);
 
@@ -79,6 +95,42 @@ inline void print_stacktrace(FILE* stream) {
             }
         }
     }
+#elif defined(PLATFORM_WINDOWS)
+    HANDLE process = GetCurrentProcess();
+    static bool sym_initialized = false;
+    if (!sym_initialized) {
+        SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+        sym_initialized = SymInitialize(process, nullptr, TRUE);
+    }
+
+    void* array[3];
+    WORD size = CaptureStackBackTrace(3, 3, array, nullptr);
+
+    alignas(SYMBOL_INFO) char sym_buf[sizeof(SYMBOL_INFO) + 256];
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)sym_buf;
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    IMAGEHLP_LINE64 line = {0};
+    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+
+    for (WORD i = 0; i < size; ++i) {
+        DWORD64 addr = (DWORD64)(uintptr_t)array[i];
+        DWORD64 disp64 = 0;
+        DWORD disp32 = 0;
+
+        if (sym_initialized && SymFromAddr(process, addr, &disp64, symbol)) {
+            if (SymGetLineFromAddr64(process, addr, &disp32, &line)) {
+                fprintf(stream, " %d. %-32.32s - %s:%lu\n", (int)i + 1, symbol->Name, line.FileName, (unsigned long)line.LineNumber);
+            } else {
+                fprintf(stream, " %d. %-32.32s - (+0x%llx)\n", (int)i + 1, symbol->Name, (unsigned long long)disp64);
+            }
+        } else {
+            fprintf(stream, " %d. 0x%llx\n", (int)i + 1, (unsigned long long)addr);
+        }
+    }
+#endif
+
 #endif
 }
 

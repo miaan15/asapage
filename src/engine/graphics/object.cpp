@@ -28,6 +28,9 @@ struct ObjectKey {
         };
     };
 };
+inline bool operator==(const ObjectKey& l, const ObjectKey& r) noexcept {
+    return l.raw == r.raw && l.validate == r.validate;
+}
 
 // TODO interpolate is quite expensive, make it to GPU's work instead
 struct Object {
@@ -105,6 +108,11 @@ bool object_destroy(ObjectKey key) {
 Object *object_get(ObjectKey key) {
     PoolKey pool_key = { .idx = key.idx, .validate = key.validate };
     return pool_get(&object_sys.object_pool, pool_key);
+}
+
+bool object_is_alive(ObjectKey key) {
+    PoolKey pool_key = { .idx = key.idx, .validate = key.validate };
+    return pool_is_alive(&object_sys.object_pool, pool_key);
 }
 
 void object_update_frame() {

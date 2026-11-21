@@ -13,7 +13,9 @@ export import context;
 export import log;
 export import file;
 export import input;
+
 export import graphics;
+export import ui;
 
 export namespace asapage {
 
@@ -86,7 +88,9 @@ void engine_init(EngineDesc desc = ENGINE_DESC_DEFAULT) {
 
     input_sys_init();
 
+    // FIXME this remove the ability to change its desc but whatever for this demo
     graphics_sys_init();
+    ui_sys_init();
 }
 
 void engine_destroy() {
@@ -138,16 +142,23 @@ bool engine_on_tick() {
     return is_on_tick;
 }
 
-void engine_draw() {
+void engine_update_frame_late() {
     // interpolate
     interpolate_alpha = tick_accumulated_time / time_delta;
 
     graphics_update_frame();
+    ui_update_frame();
+}
+
+void engine_draw() {
+    // trickt little shit
+    engine_update_frame_late();
 
     BeginDrawing();
     ClearBackground(BLACK);
 
     graphics_draw();
+    ui_draw();
 
     DrawFPS(10, 10);
 

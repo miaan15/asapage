@@ -99,10 +99,11 @@ void graphics_asset_sys_init(i32 texture_cap, i32 shader_cap, i32 material_cap, 
     list_init(&graphics_asset_sys.material_list, omni_arena_ptr, material_cap);
     list_init(&graphics_asset_sys.mesh_list, omni_arena_ptr, mesh_cap);
 
-    // stub
-    LIST_STUB(&graphics_asset_sys.texture_list); // TODO make it caro blackpink
+    { // texture
+        // stub // TODO
+        list_create(&graphics_asset_sys.texture_list);
 
-    { // texture default
+        // default
         Texture *new_texture;
 
         list_create(&graphics_asset_sys.texture_list, (Texture*)nullptr, &new_texture);
@@ -110,7 +111,11 @@ void graphics_asset_sys_init(i32 texture_cap, i32 shader_cap, i32 material_cap, 
         graphics_asset_sys.texture_num++;
     }
 
-    { // shader defaultsresolution
+    { // shader
+        // stub // TODO
+        list_create(&graphics_asset_sys.shader_list);
+
+        // default
         Shader *new_shader;
 
         list_create(&graphics_asset_sys.shader_list, (Shader*)nullptr, &new_shader);
@@ -118,7 +123,11 @@ void graphics_asset_sys_init(i32 texture_cap, i32 shader_cap, i32 material_cap, 
         graphics_asset_sys.shader_num++;
     }
 
-    { // material defaults
+    { // material
+        // stub // TODO
+        list_create(&graphics_asset_sys.material_list);
+
+        // default
         Material *new_material;
 
         list_create(&graphics_asset_sys.material_list, (Material*)nullptr, &new_material);
@@ -128,7 +137,11 @@ void graphics_asset_sys_init(i32 texture_cap, i32 shader_cap, i32 material_cap, 
         graphics_asset_sys.material_num++;
     }
 
-    { // mesh defaults
+    { // mesh
+        // stub // TODO
+        list_create(&graphics_asset_sys.mesh_list);
+
+        // default
         Mesh meshes[] = {
             GenMeshCube(1.0, 1.0, 1.0),
             GenMeshSphere(0.5, 16, 16),
